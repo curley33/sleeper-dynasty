@@ -1,0 +1,1360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dynasty Roster Viewer</title>
+<style>
+  /* ---------- Colors (light + dark) ---------- */
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5f6b7a;
+    --border: #dde2e8; --accent: #2f6fdb; --accent-soft: #e6eefc;
+    --young: #1f8a4c; --old: #c0392b; --mine: #fff7e0;
+    --dot-you: #2a78d6; --dot-other: #9aa3ae; --grid: #e6e9ee; --median: #b7bfca;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151a; --card: #1b2028; --text: #e7ebf0; --muted: #98a3b3;
+      --border: #2c333e; --accent: #6c9cf0; --accent-soft: #22304a;
+      --young: #4cc27f; --old: #ef7768; --mine: #2e2a1c;
+      --dot-you: #3987e5; --dot-other: #6b7480; --grid: #252b34; --median: #4a5361;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+
+  /* ---------- Controls ---------- */
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: end;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; margin-bottom: 20px;
+  }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); }
+  input, select, button {
+    font: inherit; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  }
+  button { background: var(--accent); color: #fff; border: none; cursor: pointer; font-weight: 600; }
+  button:disabled { opacity: .6; cursor: default; }
+  #status { color: var(--muted); font-size: .9rem; margin: -8px 0 16px; min-height: 1.2em; }
+  #status.error { color: var(--old); }
+
+  /* ---------- League summary table ---------- */
+  .summary {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; margin-bottom: 20px; overflow-x: auto;
+  }
+  .summary h2 { margin: 0 0 10px; font-size: 1.1rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: .8rem; }
+  tr.mine td { background: var(--mine); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Window chart (stage 2) ---------- */
+  .chart-card {
+    position: relative; background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; margin-bottom: 20px;
+  }
+  .chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: end; margin-bottom: 6px; }
+  .chart-head h2 { margin: 0; font-size: 1.1rem; }
+  .chart-head p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; }
+  .verdict { margin: 8px 0 4px; font-size: .95rem; }
+  .legend { display: flex; gap: 16px; font-size: .82rem; color: var(--muted); margin-top: 4px; }
+  .legend span::before {
+    content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    margin-right: 6px; vertical-align: -1px; background: var(--c);
+  }
+  .plot { width: 100%; }
+  .plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .plot text { fill: var(--muted); font-size: 11px; }
+  .plot .axis-title { font-size: 12px; }
+  .plot .quad { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; opacity: .8; }
+  .plot .you-label { fill: var(--text); font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--card); stroke-width: 4px; }
+  .plot .dot { cursor: pointer; }
+  .plot .dot circle.mark { stroke: var(--card); stroke-width: 2px; }
+  .plot .dot:hover circle.mark, .plot .dot.active circle.mark { stroke: var(--text); }
+  .empty { color: var(--muted); padding: 30px 0; text-align: center; }
+  .tip {
+    position: absolute; pointer-events: none; z-index: 5; display: none;
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: .82rem; box-shadow: 0 4px 14px rgba(0,0,0,.15); white-space: nowrap;
+  }
+  .tip b { display: block; margin-bottom: 2px; }
+  .tip span { color: var(--muted); }
+
+  /* ---------- Player rankings (stage 3) ---------- */
+  .rank-controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+  .rank-note { margin: 2px 0 0; color: var(--muted); font-size: .85rem; }
+  .ppg-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+  .track { width: 70px; height: 6px; border-radius: 3px; background: var(--grid); flex: none; }
+  .track i { display: block; height: 100%; border-radius: 3px; background: var(--dot-you); }
+  .trend.up { color: var(--young); }
+  .trend.down { color: var(--old); }
+  td .pos { display: inline-block; min-width: 34px; padding: 1px 4px; }
+  td small { color: var(--muted); margin-left: 4px; }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); margin-top: 10px; }
+
+  /* ---------- Trade calculator (stage 4) ---------- */
+  .trade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+  @media (max-width: 700px) { .trade-grid { grid-template-columns: 1fr; } }
+  .side { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--bg); }
+  .side h3 { margin: 0 0 8px; font-size: 1rem; display: flex; justify-content: space-between; }
+  .side h3 span { font-variant-numeric: tabular-nums; }
+  .add-row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .add-row select { flex: 1; min-width: 0; }
+  .add-row button { padding: 8px 12px; }
+  .items { list-style: none; margin: 8px 0 0; padding: 0; }
+  .items li {
+    display: grid; grid-template-columns: 40px 1fr 70px 28px; gap: 8px; align-items: center;
+    padding: 6px 0; border-top: 1px solid var(--border); font-size: .88rem;
+  }
+  .items li small { display: block; color: var(--muted); font-size: .76rem; }
+  .items input { width: 70px; padding: 4px 6px; text-align: right; }
+  .items .remove { background: transparent; color: var(--muted); padding: 2px; font-size: 1.1rem; }
+  .items .pick-badge { font-size: .7rem; font-weight: 700; text-align: center; border-radius: 4px; padding: 2px 0; background: var(--grid); color: var(--muted); }
+  .items .empty-side { display: block; color: var(--muted); border: none; padding: 6px 0; }
+  .result { margin-top: 16px; }
+  .result .headline { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+  .bars { display: grid; grid-template-columns: 70px 1fr 50px; gap: 6px 10px; align-items: center; font-size: .85rem; }
+  .bars .bar { height: 12px; border-radius: 0 4px 4px 0; }
+  .bars .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* ---------- Trade suggestions ---------- */
+  .suggest { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .suggest h3 { margin: 0; font-size: 1rem; }
+  .sug-list { display: grid; gap: 10px; margin-top: 10px; }
+  .sug { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--bg); }
+  .sug-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .sug-sides { grid-template-columns: 1fr; } }
+  .sug-sides > div > small { display: block; color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+  .sug-player { display: flex; gap: 8px; align-items: center; font-size: .88rem; padding: 2px 0; }
+  .sug-player .pos { min-width: 34px; padding: 1px 4px; }
+  .sug-player em { font-style: normal; color: var(--muted); font-size: .8rem; }
+  .sug-why { margin-top: 8px; font-size: .84rem; color: var(--muted); }
+  .sug-why b { color: var(--text); font-weight: 600; }
+  .sug button.ghost { margin-top: 8px; padding: 6px 10px; }
+
+  /* ---------- Team cards ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .team { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .team.mine { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .team header { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .team h3 { margin: 0; font-size: 1rem; }
+  .team .meta { color: var(--muted); font-size: .82rem; }
+  .team ul { list-style: none; margin: 0; padding: 4px 0; }
+  .team li {
+    display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center;
+    padding: 4px 14px; font-size: .88rem;
+  }
+  .pos { font-size: .72rem; font-weight: 700; text-align: center; border-radius: 4px; padding: 2px 0; background: var(--accent-soft); color: var(--accent); }
+  .pos.IDP { background: #f3e8fd; color: #7b3fb8; }
+  @media (prefers-color-scheme: dark) { .pos.IDP { background: #33264a; color: #c9a4f2; } }
+  .name small { color: var(--muted); margin-left: 4px; }
+  .tag { font-size: .68rem; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+  .age { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .age.young { color: var(--young); }
+  .age.old { color: var(--old); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Dynasty Roster Viewer</h1>
+  <p class="sub">Every roster in your Sleeper league: who's young, who's winning, who should rebuild, which players are producing, and whether a trade is fair.</p>
+
+  <div class="controls">
+    <label>Sleeper username
+      <input id="username" value="curley33" autocomplete="off">
+    </label>
+    <label>Season
+      <input id="season" type="number" style="width:90px">
+    </label>
+    <button id="loadLeagues">Find leagues</button>
+    <label>League
+      <select id="league" disabled><option>—</option></select>
+    </label>
+    <label>Sort players
+      <select id="sort">
+        <option value="age-asc">Youngest first</option>
+        <option value="age-desc">Oldest first</option>
+        <option value="pos">By position</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="status"></div>
+  <section class="chart-card" id="chartCard" hidden>
+    <div class="chart-head">
+      <div>
+        <h2>Contend or rebuild?</h2>
+        <p>Each dot is a team. Lines mark the league median, so every team lands in one of four windows.</p>
+      </div>
+      <label>Age measure
+        <select id="xMeasure">
+          <option value="avgStarterAge">Starters' average age</option>
+          <option value="avgAge">Whole roster average age</option>
+        </select>
+      </label>
+    </div>
+    <div class="verdict" id="verdict"></div>
+    <div class="legend">
+      <span style="--c: var(--dot-you)">Your team</span>
+      <span style="--c: var(--dot-other)">Other teams</span>
+    </div>
+    <div class="plot" id="plot"></div>
+    <div class="tip" id="tip"></div>
+  </section>
+
+  <section id="summary"></section>
+
+  <section class="summary" id="rankCard" hidden>
+    <h2>Player rankings</h2>
+    <p class="rank-note" id="rankNote"></p>
+    <div class="rank-controls">
+      <label>Position
+        <select id="rankPos">
+          <option value="IDP">All IDP</option>
+          <option value="DL">DL (DE, DT)</option>
+          <option value="LB">LB</option>
+          <option value="DB">DB (CB, S)</option>
+          <option value="QB">QB</option>
+          <option value="RB">RB</option>
+          <option value="WR">WR</option>
+          <option value="TE">TE</option>
+          <option value="ALL">Everyone</option>
+        </select>
+      </label>
+      <label>Rank by
+        <select id="rankBy">
+          <option value="ppg">Points per game</option>
+          <option value="total">Total points</option>
+          <option value="last3">Last 3 weeks avg</option>
+          <option value="value">Trade value</option>
+        </select>
+      </label>
+      <label>Show
+        <select id="rankOwner">
+          <option value="all">All players</option>
+          <option value="mine">My team</option>
+          <option value="others">Other teams</option>
+          <option value="available">Not on a roster</option>
+        </select>
+      </label>
+      <label>Min games
+        <input id="minGames" type="number" min="1" value="2" style="width:70px">
+      </label>
+    </div>
+    <div id="rankTable"></div>
+    <button class="ghost" id="showAll" hidden>Show all</button>
+  </section>
+
+  <section class="summary" id="tradeCard" hidden>
+    <h2>Trade calculator</h2>
+    <p class="rank-note">Values (0–100) blend each player's points per game above a replacement-level starter
+      with an age curve for his position. They're a starting point, so type over any value to use your own.</p>
+    <div class="rank-controls">
+      <label>Strategy
+        <select id="strategy">
+          <option value="contend">Contending (now matters most)</option>
+          <option value="balanced">Balanced</option>
+          <option value="rebuild">Rebuilding (youth matters most)</option>
+        </select>
+      </label>
+      <label>Trade partner
+        <select id="partner"></select>
+      </label>
+    </div>
+    <p class="rank-note" id="strategyNote"></p>
+    <div class="trade-grid">
+      <div class="side">
+        <h3>You give <span id="giveTotal">0</span></h3>
+        <div class="add-row"><select id="giveSelect"></select><button id="giveAdd">Add</button></div>
+        <div class="add-row"><select id="givePick"></select><button id="givePickAdd">Add pick</button></div>
+        <ul class="items" id="giveList"></ul>
+      </div>
+      <div class="side">
+        <h3>You get <span id="getTotal">0</span></h3>
+        <div class="add-row"><select id="getSelect"></select><button id="getAdd">Add</button></div>
+        <div class="add-row"><select id="getPick"></select><button id="getPickAdd">Add pick</button></div>
+        <ul class="items" id="getList"></ul>
+      </div>
+    </div>
+    <div class="result" id="tradeResult"></div>
+
+    <div class="suggest">
+      <h3>Suggested trades with <span id="sugPartner"></span></h3>
+      <p class="rank-note">Looks for trades that are fair on market value (within 12%), help you toward your
+        strategy, and help them toward their own window from the chart, so they have a reason to say yes.
+        The calculator above scores trades with your strategy's values, so a fair suggestion there usually shows as a win for you.</p>
+      <div id="suggestions"></div>
+    </div>
+  </section>
+  <section id="teams" class="grid"></section>
+</main>
+
+<script>
+/* =====================================================================
+   Sleeper Dynasty Roster Viewer — Stage 1
+   Data source: https://docs.sleeper.com  (free, read-only, no API key)
+   ===================================================================== */
+
+const API = "https://api.sleeper.app/v1";
+const IDP_POSITIONS = ["DL", "DE", "DT", "LB", "DB", "CB", "S"];
+const POS_ORDER = ["QB", "RB", "WR", "TE", "K", ...IDP_POSITIONS, "DEF"];
+
+// Shortcuts to page elements
+const $ = (id) => document.getElementById(id);
+const statusEl = $("status");
+
+// Things we remember between steps
+let currentUserId = null;
+let leagueData = null;   // { league, rosters, users } for the selected league
+let players = null;      // slimmed copy of /players/nfl
+
+/* ---------- Small helpers ---------- */
+
+function setStatus(msg, isError = false) {
+  statusEl.textContent = msg;
+  statusEl.className = isError ? "error" : "";
+}
+
+async function getJSON(path) {
+  const res = await fetch(API + path);
+  if (!res.ok) throw new Error(`Sleeper returned ${res.status} for ${path}`);
+  return res.json();
+}
+
+// Browser storage can be blocked (private windows, etc.), so never let it crash the page.
+function storageGet(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+}
+
+// Sleeper's "age" field can lag behind, so calculate it from birth_date when we have one.
+function exactAge(p) {
+  if (p.birth_date) {
+    const ms = Date.now() - new Date(p.birth_date).getTime();
+    return ms / (365.25 * 24 * 3600 * 1000);
+  }
+  return typeof p.age === "number" ? p.age : null;
+}
+
+function escapeHTML(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ---------- Player database (big file → download once per day) ---------- */
+
+async function loadPlayers() {
+  if (players) return players;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const cached = storageGet("sleeperPlayers");
+  if (cached && cached.date === today) {
+    players = cached.players;
+    return players;
+  }
+
+  setStatus("Downloading the NFL player list (only once a day)…");
+  const all = await getJSON("/players/nfl");
+
+  // The full file is huge. Keep only the fields we use so it fits in storage.
+  players = {};
+  for (const [id, p] of Object.entries(all)) {
+    players[id] = {
+      name: p.full_name || `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || id,
+      pos: p.position || (p.fantasy_positions && p.fantasy_positions[0]) || "?",
+      team: p.team || "FA",
+      age: p.age ?? null,
+      birth_date: p.birth_date || null,
+      exp: p.years_exp ?? null,
+    };
+  }
+  storageSet("sleeperPlayers", { date: today, players });
+  return players;
+}
+
+/* ---------- Step 1: username → list of leagues ---------- */
+
+async function findLeagues() {
+  const username = $("username").value.trim();
+  const season = $("season").value;
+  if (!username) return setStatus("Enter a Sleeper username.", true);
+
+  $("loadLeagues").disabled = true;
+  try {
+    setStatus("Looking up user…");
+    const user = await getJSON(`/user/${encodeURIComponent(username)}`);
+    if (!user) throw new Error(`No Sleeper user named "${username}".`);
+    currentUserId = user.user_id;
+    storageSet("lastUsername", username);
+
+    setStatus("Loading leagues…");
+    const leagues = await getJSON(`/user/${currentUserId}/leagues/nfl/${season}`);
+    if (!leagues.length) throw new Error(`No ${season} leagues found for ${username}.`);
+
+    const select = $("league");
+    select.innerHTML = leagues
+      .map((l) => `<option value="${l.league_id}">${escapeHTML(l.name)}</option>`)
+      .join("");
+    select.disabled = false;
+
+    // Re-open the league used last time, if it's in the list.
+    const last = storageGet("lastLeague");
+    if (last && leagues.some((l) => l.league_id === last)) select.value = last;
+
+    await loadLeague(select.value);
+  } catch (err) {
+    setStatus(err.message, true);
+  } finally {
+    $("loadLeagues").disabled = false;
+  }
+}
+
+/* ---------- Step 2: league → rosters, owners, players ---------- */
+
+async function loadLeague(leagueId) {
+  try {
+    setStatus("Loading rosters…");
+    const [league, rosters, users] = await Promise.all([
+      getJSON(`/league/${leagueId}`),
+      getJSON(`/league/${leagueId}/rosters`),
+      getJSON(`/league/${leagueId}/users`),
+    ]);
+    await loadPlayers();
+    leagueData = { league, rosters, users };
+    storageSet("lastLeague", leagueId);
+    trade = { give: [], get: [], partner: null };   // new league → start a fresh trade
+    strategyChosenByUser = false;
+    render();
+    await loadPoints(league);
+    setStatus(`${league.name} · ${rosters.length} teams · loaded ${new Date().toLocaleTimeString()}`);
+  } catch (err) {
+    setStatus(err.message, true);
+  }
+}
+
+/* ---------- Step 3: turn raw data into teams we can display ---------- */
+
+function buildTeams() {
+  const { rosters, users } = leagueData;
+  const usersById = Object.fromEntries(users.map((u) => [u.user_id, u]));
+
+  return rosters.map((r) => {
+    const owner = usersById[r.owner_id] || {};
+    const starters = new Set(r.starters || []);
+    const taxi = new Set(r.taxi || []);
+    const reserve = new Set(r.reserve || []);
+
+    const roster = (r.players || []).map((id) => {
+      const p = players[id] || { name: `Unknown (${id})`, pos: "?", team: "", age: null };
+      return {
+        id, ...p,
+        ageExact: exactAge(p),
+        isIDP: IDP_POSITIONS.includes(p.pos),
+        starter: starters.has(id),
+        taxi: taxi.has(id),
+        ir: reserve.has(id),
+      };
+    });
+
+    const ages = roster.map((p) => p.ageExact).filter((a) => a != null);
+    const starterAges = roster.filter((p) => p.starter).map((p) => p.ageExact).filter((a) => a != null);
+    const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
+    const s = r.settings || {};
+    const games = (s.wins ?? 0) + (s.losses ?? 0) + (s.ties ?? 0);
+    const pointsFor = (s.fpts ?? 0) + (s.fpts_decimal ?? 0) / 100;
+
+    return {
+      rosterId: r.roster_id,
+      teamName: owner.metadata?.team_name || owner.display_name || `Team ${r.roster_id}`,
+      ownerName: owner.display_name || "Unclaimed",
+      isMine: r.owner_id === currentUserId || (r.co_owners || []).includes(currentUserId),
+      wins: s.wins ?? 0, losses: s.losses ?? 0, ties: s.ties ?? 0,
+      pointsFor,
+      games,
+      // Points per game is fairer than total points if teams have played different numbers of games.
+      ppg: games ? pointsFor / games : null,
+      avgAge: avg(ages),
+      avgStarterAge: avg(starterAges),
+      roster,
+    };
+  });
+}
+
+/* ---------- Step 4: draw it on the page ---------- */
+
+function sortPlayers(list, mode) {
+  const byAge = (a, b) => (a.ageExact ?? 99) - (b.ageExact ?? 99);
+  const copy = [...list];
+  if (mode === "age-asc") return copy.sort(byAge);
+  if (mode === "age-desc") return copy.sort((a, b) => byAge(b, a));
+  const rank = (p) => { const i = POS_ORDER.indexOf(p.pos); return i === -1 ? 99 : i; };
+  return copy.sort((a, b) => rank(a) - rank(b) || byAge(a, b));
+}
+
+function ageClass(age) {
+  if (age == null) return "";
+  if (age < 25) return "young";
+  if (age >= 29) return "old";
+  return "";
+}
+
+const fmtAge = (a) => (a == null ? "—" : a.toFixed(1));
+
+/* =====================================================================
+   Stage 2: the contend-or-rebuild window
+   Split the league at the median age and median points per game.
+   Younger + scoring well  → Rising contender
+   Older   + scoring well  → Win now (the window won't stay open)
+   Younger + scoring less  → Rebuilding
+   Older   + scoring less  → Aging and losing (time to sell veterans)
+   ===================================================================== */
+
+const WINDOWS = {
+  rising:  "Rising contender",
+  winNow:  "Win now",
+  rebuild: "Rebuilding",
+  stuck:   "Aging and losing",
+};
+
+function median(nums) {
+  const s = [...nums].sort((a, b) => a - b);
+  if (!s.length) return null;
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+// Adds .window to each team (or null if it has no games/age data yet). Returns the medians.
+function classifyTeams(teams, xKey) {
+  const usable = teams.filter((t) => t[xKey] != null && t.ppg != null);
+  const medAge = median(usable.map((t) => t[xKey]));
+  const medPpg = median(usable.map((t) => t.ppg));
+  for (const t of teams) {
+    if (t[xKey] == null || t.ppg == null) { t.window = null; continue; }
+    const young = t[xKey] <= medAge;
+    const good = t.ppg >= medPpg;
+    t.window = good ? (young ? "rising" : "winNow") : (young ? "rebuild" : "stuck");
+  }
+  return { medAge, medPpg, usable };
+}
+
+// Pick a "nice" tick step (1, 2, 5, 10, 20…) so axes have about `count` ticks.
+function niceStep(range, count) {
+  const raw = range / count;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / pow;
+  return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * pow;
+}
+
+function renderChart(teams, xKey, medians) {
+  const plot = $("plot");
+  const { medAge, medPpg, usable } = medians;
+  $("chartCard").hidden = false;
+
+  if (!usable.length) {
+    plot.innerHTML = `<p class="empty">No games played yet this season — the chart appears after week 1.</p>`;
+    $("verdict").textContent = "";
+    return;
+  }
+
+  // Size the drawing to the space available (re-drawn when the window is resized).
+  const W = Math.max(300, plot.clientWidth || 700);
+  const H = Math.round(Math.min(460, Math.max(300, W * 0.58)));
+  const m = { top: 24, right: 16, bottom: 46, left: 52 };
+  const iw = W - m.left - m.right, ih = H - m.top - m.bottom;
+
+  // Axis ranges with a little padding so dots aren't on the edge.
+  const ages = usable.map((t) => t[xKey]), ppgs = usable.map((t) => t.ppg);
+  let x0 = Math.floor(Math.min(...ages) - 0.5), x1 = Math.ceil(Math.max(...ages) + 0.5);
+  const yStep = niceStep(Math.max(...ppgs) - Math.min(...ppgs) || 10, 5);
+  let y0 = Math.floor((Math.min(...ppgs) - yStep * 0.5) / yStep) * yStep;
+  let y1 = Math.ceil((Math.max(...ppgs) + yStep * 0.5) / yStep) * yStep;
+  const xStep = niceStep(x1 - x0, W < 500 ? 4 : 7);
+
+  const sx = (v) => m.left + ((v - x0) / (x1 - x0)) * iw;
+  const sy = (v) => m.top + ih - ((v - y0) / (y1 - y0)) * ih;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Scatter chart of team age versus points per game">`;
+
+  // Gridlines + tick labels
+  for (let v = Math.ceil(y0 / yStep) * yStep; v <= y1 + 1e-9; v += yStep) {
+    svg += `<line x1="${m.left}" x2="${m.left + iw}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--grid)" />`;
+    svg += `<text x="${m.left - 8}" y="${sy(v) + 4}" text-anchor="end">${+v.toFixed(1)}</text>`;
+  }
+  for (let v = Math.ceil(x0 / xStep) * xStep; v <= x1 + 1e-9; v += xStep) {
+    svg += `<line y1="${m.top}" y2="${m.top + ih}" x1="${sx(v)}" x2="${sx(v)}" stroke="var(--grid)" />`;
+    svg += `<text x="${sx(v)}" y="${m.top + ih + 18}" text-anchor="middle">${+v.toFixed(1)}</text>`;
+  }
+
+  // Median lines split the chart into the four windows
+  svg += `<line x1="${sx(medAge)}" x2="${sx(medAge)}" y1="${m.top}" y2="${m.top + ih}" stroke="var(--median)" stroke-width="1.5" />`;
+  svg += `<line x1="${m.left}" x2="${m.left + iw}" y1="${sy(medPpg)}" y2="${sy(medPpg)}" stroke="var(--median)" stroke-width="1.5" />`;
+
+  // Window names in the corners
+  const pad = 8;
+  svg += `<text class="quad" x="${m.left + pad}" y="${m.top + 14}">${WINDOWS.rising}</text>`;
+  svg += `<text class="quad" x="${m.left + iw - pad}" y="${m.top + 14}" text-anchor="end">${WINDOWS.winNow}</text>`;
+  svg += `<text class="quad" x="${m.left + pad}" y="${m.top + ih - pad}">${WINDOWS.rebuild}</text>`;
+  svg += `<text class="quad" x="${m.left + iw - pad}" y="${m.top + ih - pad}" text-anchor="end">${WINDOWS.stuck}</text>`;
+
+  // Axis titles
+  const xTitle = xKey === "avgStarterAge" ? "Starters' average age (younger ←  → older)" : "Roster average age (younger ←  → older)";
+  svg += `<text class="axis-title" x="${m.left + iw / 2}" y="${H - 6}" text-anchor="middle">${xTitle}</text>`;
+  svg += `<text class="axis-title" transform="translate(14 ${m.top + ih / 2}) rotate(-90)" text-anchor="middle">Points per game</text>`;
+
+  // Dots — other teams first so yours is drawn on top
+  const ordered = [...usable].sort((a, b) => a.isMine - b.isMine);
+  for (const t of ordered) {
+    const cx = sx(t[xKey]), cy = sy(t.ppg);
+    const i = teams.indexOf(t);
+    svg += `<g class="dot" data-i="${i}" tabindex="0">
+      <circle cx="${cx}" cy="${cy}" r="14" fill="transparent" />
+      <circle class="mark" cx="${cx}" cy="${cy}" r="${t.isMine ? 7 : 6}" fill="var(${t.isMine ? "--dot-you" : "--dot-other"})" />
+    </g>`;
+    if (t.isMine) {
+      const right = cx < m.left + iw - 120;
+      svg += `<text class="you-label" x="${cx + (right ? 12 : -12)}" y="${cy + 4}" text-anchor="${right ? "start" : "end"}">${escapeHTML(t.teamName)}</text>`;
+    }
+  }
+  svg += `</svg>`;
+  plot.innerHTML = svg;
+
+  // One-line verdict for your team
+  const me = teams.find((t) => t.isMine);
+  if (me && me.window) {
+    const ageWord = me[xKey] <= medAge ? "younger" : "older";
+    const ptsWord = me.ppg >= medPpg ? "more" : "fewer";
+    $("verdict").innerHTML = `<b>${escapeHTML(me.teamName)}: ${WINDOWS[me.window]}.</b>
+      Your ${xKey === "avgStarterAge" ? "starters are" : "roster is"} ${ageWord} than the league median
+      (${fmtAge(me[xKey])} vs ${fmtAge(medAge)}) and you score ${ptsWord} points per game
+      (${me.ppg.toFixed(1)} vs ${medPpg.toFixed(1)}).`;
+  } else {
+    $("verdict").textContent = "";
+  }
+}
+
+// Tooltip: one listener on the chart handles every dot (works with mouse, tap, and keyboard).
+function showTip(dotEl) {
+  const tip = $("tip");
+  document.querySelectorAll(".plot .dot.active").forEach((d) => d.classList.remove("active"));
+  if (!dotEl) { tip.style.display = "none"; return; }
+  dotEl.classList.add("active");
+  const t = currentTeams[+dotEl.dataset.i];
+  const xKey = $("xMeasure").value;
+  tip.innerHTML = `<b>${escapeHTML(t.teamName)}${t.isMine ? " (you)" : ""}</b>
+    ${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""} · ${WINDOWS[t.window]}<br>
+    <span>Points/game</span> ${t.ppg.toFixed(1)}<br>
+    <span>${xKey === "avgStarterAge" ? "Starters avg age" : "Roster avg age"}</span> ${fmtAge(t[xKey])}`;
+  tip.style.display = "block";
+  const card = $("chartCard").getBoundingClientRect();
+  const dot = dotEl.querySelector("circle.mark").getBoundingClientRect();
+  let left = dot.left - card.left + dot.width / 2 + 12;
+  if (left + tip.offsetWidth > card.width - 8) left = dot.left - card.left - tip.offsetWidth - 12;
+  tip.style.left = `${Math.max(8, left)}px`;
+  tip.style.top = `${dot.top - card.top - tip.offsetHeight / 2 + dot.height / 2}px`;
+}
+
+let currentTeams = [];
+
+function render() {
+  if (!leagueData) return;
+  const teams = buildTeams();
+  currentTeams = teams;
+  const sortMode = $("sort").value;
+  const xKey = $("xMeasure").value;
+  const medians = classifyTeams(teams, xKey);
+  renderChart(teams, xKey, medians);
+
+  // League-wide table: youngest average roster at the top.
+  const ranked = [...teams].sort((a, b) => (a.avgAge ?? 99) - (b.avgAge ?? 99));
+  $("summary").innerHTML = `
+    <div class="summary">
+      <h2>League age ranking</h2>
+      <table>
+        <thead><tr>
+          <th>#</th><th>Team</th><th>Record</th>
+          <th class="num">Points for</th><th class="num">Pts/game</th>
+          <th class="num">Avg age</th><th class="num">Starters avg</th><th>Window</th>
+        </tr></thead>
+        <tbody>
+          ${ranked.map((t, i) => `
+            <tr class="${t.isMine ? "mine" : ""}">
+              <td>${i + 1}</td>
+              <td>${escapeHTML(t.teamName)}</td>
+              <td>${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""}</td>
+              <td class="num">${t.pointsFor.toFixed(1)}</td>
+              <td class="num">${t.ppg == null ? "—" : t.ppg.toFixed(1)}</td>
+              <td class="num">${fmtAge(t.avgAge)}</td>
+              <td class="num">${fmtAge(t.avgStarterAge)}</td>
+              <td>${t.window ? WINDOWS[t.window] : "—"}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+
+  // One card per team; your team goes first.
+  const ordered = [...teams].sort((a, b) => b.isMine - a.isMine || (a.avgAge ?? 99) - (b.avgAge ?? 99));
+  $("teams").innerHTML = ordered.map((t) => `
+    <article class="team ${t.isMine ? "mine" : ""}">
+      <header>
+        <h3>${escapeHTML(t.teamName)}${t.isMine ? " (you)" : ""}</h3>
+        <div class="meta">
+          ${escapeHTML(t.ownerName)} · ${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""}
+          · avg age ${fmtAge(t.avgAge)} · ${t.roster.length} players
+        </div>
+      </header>
+      <ul>
+        ${sortPlayers(t.roster, sortMode).map((p) => `
+          <li>
+            <span class="pos ${p.isIDP ? "IDP" : ""}">${escapeHTML(p.pos)}</span>
+            <span class="name">${escapeHTML(p.name)}<small>${escapeHTML(p.team)}</small>${
+              p.starter ? '<span class="tag">START</span>' : ""}${
+              p.taxi ? '<span class="tag">TAXI</span>' : ""}${
+              p.ir ? '<span class="tag">IR</span>' : ""}</span>
+            <span class="age ${ageClass(p.ageExact)}">${fmtAge(p.ageExact)}</span>
+          </li>`).join("")}
+      </ul>
+    </article>`).join("");
+}
+
+/* =====================================================================
+   Stage 3: player rankings using YOUR league's scoring
+   Sleeper's matchups endpoint lists every rostered player's fantasy
+   points for a week, already scored with this league's settings —
+   so IDP scoring is exactly what your league uses.
+   Limitation: a week only counts if the player was on some roster in
+   this league that week (free agents' waiver weeks are missing).
+   ===================================================================== */
+
+let nflState = null;      // from /state/nfl: current season + week
+let weeklyPoints = null;  // { lastWeek, byPlayer: { playerId: [week1, week2, …] } }
+let showAllRows = false;
+
+const POS_GROUPS = {
+  IDP: IDP_POSITIONS,
+  DL: ["DL", "DE", "DT"],
+  LB: ["LB"],
+  DB: ["DB", "CB", "S"],
+  QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"],
+  ALL: null,
+};
+
+// How many weeks are finished? Current week is skipped because games may still be in progress.
+function completedWeeks(league) {
+  const st = nflState || {};
+  if (league.status === "pre_draft" || league.status === "drafting") return 0;
+  if (String(league.season) === String(st.league_season || st.season)) {
+    if (st.season_type === "pre") return 0;
+    if (st.season_type === "regular") return Math.max(0, (st.week || 1) - 1);
+  }
+  return league.settings?.last_scored_leg || 17; // past season: everything is finished
+}
+
+// Finished weeks never change (apart from rare stat corrections), so cache all but the newest.
+async function getMatchups(leagueId, week, canCache) {
+  const key = `matchups:${leagueId}:${week}`;
+  if (canCache) {
+    const hit = storageGet(key);
+    if (hit) return hit;
+  }
+  const data = await getJSON(`/league/${leagueId}/matchups/${week}`);
+  if (canCache) storageSet(key, data);
+  return data;
+}
+
+async function loadPoints(league) {
+  const lastWeek = completedWeeks(league);
+  weeklyPoints = { lastWeek, byPlayer: {} };
+  if (lastWeek < 1) return refreshValues();
+
+  setStatus(`Loading weekly scores (weeks 1–${lastWeek})…`);
+  const weeks = Array.from({ length: lastWeek }, (_, i) => i + 1);
+  const results = await Promise.all(
+    weeks.map((w) => getMatchups(league.league_id, w, w < lastWeek))
+  );
+
+  results.forEach((entries, i) => {
+    for (const team of entries || []) {
+      for (const [pid, pts] of Object.entries(team.players_points || {})) {
+        const arr = (weeklyPoints.byPlayer[pid] ||= Array(lastWeek).fill(null));
+        arr[i] = pts;
+      }
+    }
+  });
+  refreshValues();
+}
+
+// Turn weekly numbers into one row per player.
+function buildPlayerRows() {
+  const { lastWeek, byPlayer } = weeklyPoints;
+  const ownerOf = {};
+  for (const t of currentTeams) for (const p of t.roster) ownerOf[p.id] = t;
+
+  return Object.entries(byPlayer).map(([id, weeks]) => {
+    const p = players[id] || { name: `Unknown (${id})`, pos: "?", team: "" };
+    const played = weeks.filter((v) => v != null && v !== 0);   // 0 usually means bye/injury
+    const total = played.reduce((a, b) => a + b, 0);
+    const recent = weeks.slice(Math.max(0, lastWeek - 3)).filter((v) => v != null && v !== 0);
+    return {
+      id, ...p,
+      age: exactAge(p),
+      owner: ownerOf[id] || null,
+      games: played.length,
+      total,
+      ppg: played.length ? total / played.length : 0,
+      last3: recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : null,
+    };
+  });
+}
+
+function renderRankings() {
+  const card = $("rankCard");
+  card.hidden = false;
+  const { lastWeek } = weeklyPoints;
+  if (lastWeek < 1) {
+    $("rankNote").textContent = "";
+    $("rankTable").innerHTML = `<p class="empty">No completed weeks yet — rankings appear after week 1.</p>`;
+    $("showAll").hidden = true;
+    return;
+  }
+  $("rankNote").textContent =
+    `Fantasy points from your league's own scoring, weeks 1–${lastWeek}. ` +
+    `A week only counts if the player was on a roster in this league that week.`;
+
+  const group = POS_GROUPS[$("rankPos").value];
+  const by = $("rankBy").value;
+  const ownerFilter = $("rankOwner").value;
+  const minGames = Math.max(1, +$("minGames").value || 1);
+
+  let rows = buildPlayerRows().filter((r) =>
+    r.games >= minGames &&
+    (!group || group.includes(r.pos)) &&
+    (ownerFilter === "all" ||
+      (ownerFilter === "mine" && r.owner?.isMine) ||
+      (ownerFilter === "others" && r.owner && !r.owner.isMine) ||
+      (ownerFilter === "available" && !r.owner))
+  );
+  for (const r of rows) r.value = valueOf(r.id);
+  rows.sort((a, b) => (b[by] ?? -1) - (a[by] ?? -1));
+
+  const LIMIT = 50;
+  const shown = showAllRows ? rows : rows.slice(0, LIMIT);
+  $("showAll").hidden = rows.length <= LIMIT;
+  $("showAll").textContent = showAllRows ? "Show top 50" : `Show all ${rows.length}`;
+
+  if (!rows.length) {
+    $("rankTable").innerHTML = `<p class="empty">No players match these filters.</p>`;
+    return;
+  }
+
+  const maxPpg = Math.max(...rows.map((r) => r.ppg), 1);
+  $("rankTable").innerHTML = `
+    <table>
+      <thead><tr>
+        <th>#</th><th>Player</th><th>Pos</th><th class="num">Age</th><th>Fantasy team</th>
+        <th class="num">Games</th><th class="num">Total</th><th class="num">Pts/game</th><th class="num">Last 3</th><th class="num">Value</th>
+      </tr></thead>
+      <tbody>
+        ${shown.map((r, i) => {
+          const diff = r.last3 == null ? 0 : r.last3 - r.ppg;
+          const trend = Math.abs(diff) < 1 ? "" : diff > 0 ? "up" : "down";
+          return `
+          <tr class="${r.owner?.isMine ? "mine" : ""}">
+            <td>${i + 1}</td>
+            <td>${escapeHTML(r.name)}<small>${escapeHTML(r.team)}</small></td>
+            <td><span class="pos ${IDP_POSITIONS.includes(r.pos) ? "IDP" : ""}">${escapeHTML(r.pos)}</span></td>
+            <td class="num">${fmtAge(r.age)}</td>
+            <td>${r.owner ? escapeHTML(r.owner.teamName) : "<small>Not rostered</small>"}</td>
+            <td class="num">${r.games}</td>
+            <td class="num">${r.total.toFixed(1)}</td>
+            <td class="num"><div class="ppg-cell">${r.ppg.toFixed(1)}
+              <span class="track"><i style="width:${(r.ppg / maxPpg) * 100}%"></i></span></div></td>
+            <td class="num"><span class="trend ${trend}">${r.last3 == null ? "—" : r.last3.toFixed(1)}${
+              trend === "up" ? " ▲" : trend === "down" ? " ▼" : ""}</span></td>
+            <td class="num">${fmtVal(r.value)}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>`;
+}
+
+/* =====================================================================
+   Stage 4: trade calculator with our own value formula
+   1. Production: points per game ABOVE a replacement-level starter at
+      that position (replacement = the first player who wouldn't start
+      on any team, based on your league's lineup slots).
+   2. Age: a multiplier from each position's typical decline age.
+   3. Strategy: contenders care less about age, rebuilders care more.
+   4. Curve: values are raised to a power so one star is worth more
+      than two average players (the classic "2-for-1" problem).
+   Every number below is a guess you can tune.
+   ===================================================================== */
+
+const VALUE_SETTINGS = {
+  // Age when a position usually starts declining.
+  declineAge: { QB: 32, RB: 26, WR: 28, TE: 29, K: 34, DL: 29, LB: 28, DB: 28 },
+  // How much age matters for each strategy (0 = ignore age, 1 = full effect).
+  ageWeight: { contend: 0.25, balanced: 0.6, rebuild: 1.0 },
+  // Higher = stars worth more compared to depth.
+  starCurve: 1.4,
+  // Draft pick values on the same 0–100 scale.
+  picks: {
+    "Early 1st": 40, "Mid 1st": 30, "Late 1st": 24,
+    "2nd round": 12, "3rd round": 5, "4th round or later": 2,
+  },
+};
+
+let playerValues = {};   // playerId → { value, ppg, ageMult }
+let trade = { give: [], get: [], partner: null };
+let strategyChosenByUser = false;
+
+function groupOf(pos) {
+  if (["DE", "DT", "DL"].includes(pos)) return "DL";
+  if (["CB", "S", "DB"].includes(pos)) return "DB";
+  return pos;
+}
+
+// How many starters each position has per team, from the league's lineup.
+// Flex spots are split between the positions that usually fill them.
+function startingSlots() {
+  const c = {};
+  const add = (g, n) => (c[g] = (c[g] || 0) + n);
+  for (const slot of leagueData.league.roster_positions || []) {
+    switch (slot) {
+      case "QB": case "RB": case "WR": case "TE": case "K": case "LB": add(slot, 1); break;
+      case "DE": case "DT": case "DL": add("DL", 1); break;
+      case "CB": case "S": case "DB": add("DB", 1); break;
+      case "FLEX": add("RB", 0.4); add("WR", 0.4); add("TE", 0.2); break;
+      case "WRRB_FLEX": add("RB", 0.5); add("WR", 0.5); break;
+      case "REC_FLEX": add("WR", 0.7); add("TE", 0.3); break;
+      case "SUPER_FLEX": add("QB", 0.6); add("RB", 0.15); add("WR", 0.2); add("TE", 0.05); break;
+      case "IDP_FLEX": add("DL", 0.3); add("LB", 0.4); add("DB", 0.3); break;
+    }
+  }
+  return c;
+}
+
+// Values for one strategy: playerId → { value, ppg, ageMult }
+function computeValueSet(strategy) {
+  const w = VALUE_SETTINGS.ageWeight[strategy];
+  const teamsCount = leagueData.rosters.length;
+  const slots = startingSlots();
+  const rows = buildPlayerRows();
+
+  // Replacement level: the points/game of the first non-starter at each position.
+  const replacement = {};
+  for (const g of Object.keys(slots)) {
+    const ppgs = rows.filter((r) => groupOf(r.pos) === g && r.games >= 2)
+      .map((r) => r.ppg).sort((a, b) => b - a);
+    const n = Math.round(teamsCount * slots[g]);
+    replacement[g] = ppgs[n] ?? ppgs[ppgs.length - 1] ?? 0;
+  }
+
+  // Every player with points, plus rostered players without any (rookies, injured).
+  const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+  for (const t of currentTeams) for (const p of t.roster) {
+    if (!byId[p.id]) byId[p.id] = { id: p.id, pos: p.pos, age: p.ageExact, ppg: 0, games: 0 };
+  }
+
+  const raw = {};
+  for (const r of Object.values(byId)) {
+    const g = groupOf(r.pos);
+    const surplus = slots[g] ? Math.max(0, r.ppg - replacement[g]) + 1 : 0.5;
+    const decline = VALUE_SETTINGS.declineAge[g] ?? 29;
+    const ageMult = r.age == null ? 1 : Math.min(1.75, Math.max(0.25, (decline + 2 - r.age) / 4));
+    raw[r.id] = { raw: surplus * (1 - w + w * ageMult), ppg: r.ppg, ageMult };
+  }
+
+  const max = Math.max(...Object.values(raw).map((v) => v.raw), 0.0001);
+  const out = {};
+  for (const [id, v] of Object.entries(raw)) {
+    out[id] = { ...v, value: 100 * Math.pow(v.raw / max, VALUE_SETTINGS.starCurve) };
+  }
+  return out;
+}
+
+// All three strategies are computed: the calculator shows yours, and the
+// trade finder uses the others to judge fairness and the other team's view.
+let valueSets = {};
+function computeValues() {
+  for (const s of ["contend", "balanced", "rebuild"]) valueSets[s] = computeValueSet(s);
+  playerValues = valueSets[$("strategy").value];
+}
+
+const valueOf = (id) => playerValues[id]?.value ?? 0;
+const fmtVal = (v) => (v >= 10 ? v.toFixed(0) : v.toFixed(1));
+
+function itemValue(item) {
+  if (item.override != null) return item.override;
+  return item.type === "pick" ? VALUE_SETTINGS.picks[item.label] : valueOf(item.id);
+}
+
+// Called whenever points finish loading or the strategy changes.
+function refreshValues() {
+  if (!weeklyPoints || !leagueData) return;
+  if (!strategyChosenByUser) {
+    const me = currentTeams.find((t) => t.isMine);
+    const suggested = me?.window === "rising" || me?.window === "winNow" ? "contend"
+      : me?.window ? "rebuild" : "balanced";
+    $("strategy").value = suggested;
+    $("strategyNote").textContent = me?.window
+      ? `Set to match your window from the chart (${WINDOWS[me.window]}). Change it to see how values shift.`
+      : "";
+  }
+  computeValues();
+  renderRankings();
+  renderTrade();
+  renderSuggestions();
+}
+
+function rosterOptions(team) {
+  if (!team) return `<option value="">—</option>`;
+  return [...team.roster]
+    .sort((a, b) => valueOf(b.id) - valueOf(a.id))
+    .map((p) => `<option value="${p.id}">${escapeHTML(p.name)} · ${escapeHTML(p.pos)} · ${fmtVal(valueOf(p.id))}</option>`)
+    .join("");
+}
+
+function renderTrade() {
+  $("tradeCard").hidden = false;
+  const me = currentTeams.find((t) => t.isMine);
+  const others = currentTeams.filter((t) => !t.isMine);
+
+  // Partner dropdown (keep the current choice if it still exists)
+  if (!others.some((t) => t.rosterId === trade.partner)) trade.partner = others[0]?.rosterId ?? null;
+  $("partner").innerHTML = others
+    .map((t) => `<option value="${t.rosterId}">${escapeHTML(t.teamName)}</option>`).join("");
+  $("partner").value = trade.partner ?? "";
+  const partner = currentTeams.find((t) => t.rosterId === trade.partner);
+
+  $("giveSelect").innerHTML = rosterOptions(me);
+  $("getSelect").innerHTML = rosterOptions(partner);
+  const pickOpts = Object.entries(VALUE_SETTINGS.picks)
+    .map(([label, v]) => `<option>${label}</option>`).join("");
+  $("givePick").innerHTML = pickOpts;
+  $("getPick").innerHTML = pickOpts;
+
+  for (const side of ["give", "get"]) {
+    const list = trade[side];
+    $(side + "List").innerHTML = list.length ? list.map((item, i) => {
+      let badge, title, sub;
+      if (item.type === "pick") {
+        badge = `<span class="pick-badge">PICK</span>`;
+        title = escapeHTML(item.label);
+        sub = "Rookie draft pick";
+      } else {
+        const p = players[item.id] || { name: item.id, pos: "?" };
+        const v = playerValues[item.id] || {};
+        badge = `<span class="pos ${IDP_POSITIONS.includes(p.pos) ? "IDP" : ""}">${escapeHTML(p.pos)}</span>`;
+        title = escapeHTML(p.name);
+        sub = `Age ${fmtAge(exactAge(p))} · ${v.ppg ? v.ppg.toFixed(1) + " pts/game" : "no points yet"}`;
+      }
+      return `<li>${badge}<span>${title}<small>${sub}</small></span>
+        <input type="number" min="0" step="0.5" value="${fmtVal(itemValue(item))}"
+          data-side="${side}" data-i="${i}" aria-label="Value">
+        <button class="remove" data-side="${side}" data-i="${i}" aria-label="Remove">×</button></li>`;
+    }).join("") : `<li class="empty-side">Nothing added yet</li>`;
+  }
+
+  // Totals and verdict
+  const give = trade.give.reduce((s, it) => s + itemValue(it), 0);
+  const get = trade.get.reduce((s, it) => s + itemValue(it), 0);
+  $("giveTotal").textContent = fmtVal(give);
+  $("getTotal").textContent = fmtVal(get);
+
+  if (!trade.give.length && !trade.get.length) {
+    $("tradeResult").innerHTML = "";
+    return;
+  }
+  const diff = get - give;
+  const pct = Math.abs(diff) / Math.max(give, get, 0.0001);
+  const headline = pct < 0.1 ? "About even: a fair trade."
+    : diff > 0 ? `You win this trade by ${fmtVal(diff)} points of value.`
+    : `You overpay by ${fmtVal(-diff)} points of value.`;
+  const maxSide = Math.max(give, get, 0.0001);
+  $("tradeResult").innerHTML = `
+    <div class="headline">${headline}</div>
+    <div class="bars">
+      <span>You give</span><div class="bar" style="width:${(give / maxSide) * 100}%; background: var(--dot-other)"></div><span class="num">${fmtVal(give)}</span>
+      <span>You get</span><div class="bar" style="width:${(get / maxSide) * 100}%; background: var(--dot-you)"></div><span class="num">${fmtVal(get)}</span>
+    </div>`;
+}
+
+function addToTrade(side, item) {
+  const list = trade[side];
+  if (item.type === "player" && (trade.give.concat(trade.get)).some((x) => x.id === item.id)) return;
+  list.push({ ...item, override: null });
+  renderTrade();
+}
+
+/* =====================================================================
+   Trade finder
+   For the chosen partner, try every 1-for-1, 2-for-1, 1-for-2 and 2-for-2
+   swap among each team's most valuable players, and keep trades where:
+   • Market value is fair: within 12% using BALANCED values (a neutral view).
+   • You improve toward your strategy:
+       contend  → your best starting lineup scores more points per game
+       rebuild  → your age-weighted (rebuild) value goes up
+       balanced → a mix of both
+   • They improve toward THEIR window from the chart, so they'd accept.
+   ===================================================================== */
+
+const SLOT_ELIGIBLE = {
+  QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"], K: ["K"], DEF: ["DEF"],
+  DL: ["DL", "DE", "DT"], DE: ["DE"], DT: ["DT"], LB: ["LB"],
+  DB: ["DB", "CB", "S"], CB: ["CB"], S: ["S"],
+  IDP_FLEX: ["DL", "DE", "DT", "LB", "DB", "CB", "S"],
+  REC_FLEX: ["WR", "TE"], WRRB_FLEX: ["RB", "WR"],
+  FLEX: ["RB", "WR", "TE"], SUPER_FLEX: ["QB", "RB", "WR", "TE"],
+};
+// Fill strict slots first, then flex slots from most to least restrictive.
+const FLEX_ORDER = ["IDP_FLEX", "REC_FLEX", "WRRB_FLEX", "FLEX", "SUPER_FLEX"];
+
+const FINDER = {
+  poolSize: 15,      // how many of each team's top players to consider
+  fairness: 0.12,    // max value gap as a share of the bigger side
+  showTop: 5,
+};
+
+function lineupSlots() {
+  const slots = (leagueData.league.roster_positions || []).filter((s) => SLOT_ELIGIBLE[s]);
+  return [
+    ...slots.filter((s) => !FLEX_ORDER.includes(s)),
+    ...FLEX_ORDER.flatMap((f) => slots.filter((s) => s === f)),
+  ];
+}
+
+// Best possible starting lineup points per game from a list of players.
+function lineupPPG(roster, slots) {
+  const sorted = [...roster].sort((a, b) => b.ppg - a.ppg);
+  const used = new Set();
+  let total = 0;
+  for (const slot of slots) {
+    const ok = SLOT_ELIGIBLE[slot];
+    const p = sorted.find((x) => !used.has(x.id) && ok.includes(x.pos));
+    if (p) { used.add(p.id); total += p.ppg; }
+  }
+  return total;
+}
+
+function goalFor(window) {
+  if (window === "rising" || window === "winNow") return "contend";
+  if (window === "rebuild" || window === "stuck") return "rebuild";
+  return "balanced";
+}
+
+// How much a trade helps a team toward its goal (higher = better).
+function goalGain(goal, lineupDelta, futureDelta) {
+  if (goal === "contend") return lineupDelta;
+  if (goal === "rebuild") return futureDelta;
+  return lineupDelta + futureDelta * 0.5;
+}
+
+function combos(list) {
+  const out = list.map((p) => [p]);
+  for (let i = 0; i < list.length; i++)
+    for (let j = i + 1; j < list.length; j++) out.push([list[i], list[j]]);
+  return out;
+}
+
+function findTrades(me, partner, myGoal) {
+  const slots = lineupSlots();
+  const market = valueSets.balanced, future = valueSets.rebuild;
+  const asPlayer = (p) => ({ id: p.id, pos: p.pos, ppg: market[p.id]?.ppg || 0 });
+  const myRoster = me.roster.map(asPlayer), theirRoster = partner.roster.map(asPlayer);
+  const theirGoal = goalFor(partner.window);
+
+  const pool = (roster) => [...roster]
+    .filter((p) => (market[p.id]?.value ?? 0) >= 1)
+    .sort((a, b) => market[b.id].value - market[a.id].value)
+    .slice(0, FINDER.poolSize);
+
+  const sum = (set, ps) => ps.reduce((s, p) => s + (set[p.id]?.value ?? 0), 0);
+  const myBase = lineupPPG(myRoster, slots), theirBase = lineupPPG(theirRoster, slots);
+
+  const results = [];
+  for (const give of combos(pool(myRoster))) {
+    const giveIds = new Set(give.map((p) => p.id));
+    const giveMarket = sum(market, give);
+    for (const get of combos(pool(theirRoster))) {
+      const getMarket = sum(market, get);
+      if (Math.abs(getMarket - giveMarket) > FINDER.fairness * Math.max(getMarket, giveMarket)) continue;
+
+      const getIds = new Set(get.map((p) => p.id));
+      const myAfter = myRoster.filter((p) => !giveIds.has(p.id)).concat(get);
+      const theirAfter = theirRoster.filter((p) => !getIds.has(p.id)).concat(give);
+      const myLineup = lineupPPG(myAfter, slots) - myBase;
+      const theirLineup = lineupPPG(theirAfter, slots) - theirBase;
+      const myFuture = sum(future, get) - sum(future, give);
+
+      const mine = goalGain(myGoal, myLineup, myFuture);
+      const theirs = goalGain(theirGoal, theirLineup, -myFuture);
+      if (mine <= 0.5 || theirs <= 0.1) continue;   // both sides must actually gain
+
+      results.push({ give, get, myLineup, theirLineup, myFuture, giveMarket, getMarket, score: mine });
+    }
+  }
+
+  // Best first, but keep the list varied: each of their players shows up once,
+  // each of yours at most twice.
+  results.sort((a, b) => b.score - a.score);
+  const seen = {}, picked = [];
+  for (const r of results) {
+    if (r.get.some((p) => seen[p.id]) || r.give.some((p) => (seen[p.id] || 0) >= 2)) continue;
+    [...r.give, ...r.get].forEach((p) => (seen[p.id] = (seen[p.id] || 0) + 1));
+    picked.push(r);
+    if (picked.length === FINDER.showTop) break;
+  }
+  return { picked, theirGoal };
+}
+
+let lastSuggestions = [];
+const signed = (v, d = 1) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(d);
+
+function goalReason(goal, lineup, future) {
+  if (goal === "contend") return `starting lineup <b>${signed(lineup)} pts/game</b>`;
+  if (goal === "rebuild") return `future value <b>${signed(future)}</b>`;
+  return `lineup <b>${signed(lineup)} pts/game</b>, future value <b>${signed(future)}</b>`;
+}
+
+function renderSuggestions() {
+  const box = $("suggestions");
+  const me = currentTeams.find((t) => t.isMine);
+  const partner = currentTeams.find((t) => t.rosterId === trade.partner);
+  $("sugPartner").textContent = partner?.teamName ?? "—";
+  if (!me || !partner || !weeklyPoints?.lastWeek) {
+    box.innerHTML = `<p class="empty">Suggestions need at least one completed week of scores.</p>`;
+    return;
+  }
+
+  const myGoal = $("strategy").value;
+  const { picked, theirGoal } = findTrades(me, partner, myGoal);
+  lastSuggestions = picked;
+  if (!picked.length) {
+    box.innerHTML = myGoal === "rebuild" && theirGoal === "rebuild"
+      ? `<p class="empty">You're both rebuilding, so any future value you gain is value they lose.
+          Try a contending team, where trading veterans for youth helps both sides.</p>`
+      : `<p class="empty">No fair trades found that help both teams. Try another partner or strategy.</p>`;
+    return;
+  }
+
+  const playerLine = (p) => {
+    const info = players[p.id] || { name: p.id, pos: "?" };
+    return `<div class="sug-player"><span class="pos ${IDP_POSITIONS.includes(info.pos) ? "IDP" : ""}">${escapeHTML(info.pos)}</span>
+      <span>${escapeHTML(info.name)} <em>${fmtAge(exactAge(info))} yrs · ${p.ppg.toFixed(1)} ppg</em></span></div>`;
+  };
+  const goalName = { contend: "contending", rebuild: "rebuilding", balanced: "balanced" };
+
+  box.innerHTML = `<div class="sug-list">${picked.map((r, k) => `
+    <div class="sug">
+      <div class="sug-sides">
+        <div><small>You give</small>${r.give.map(playerLine).join("")}</div>
+        <div><small>You get</small>${r.get.map(playerLine).join("")}</div>
+      </div>
+      <div class="sug-why">
+        For you (${goalName[myGoal]}): ${goalReason(myGoal, r.myLineup, r.myFuture)}<br>
+        For them (${goalName[theirGoal]}): ${goalReason(theirGoal, r.theirLineup, -r.myFuture)}<br>
+        Market value (balanced): you give ${fmtVal(r.giveMarket)}, you get ${fmtVal(r.getMarket)}
+      </div>
+      <button class="ghost" data-k="${k}">Load in calculator</button>
+    </div>`).join("")}</div>`;
+}
+
+$("suggestions").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-k]");
+  if (!btn) return;
+  const r = lastSuggestions[+btn.dataset.k];
+  trade.give = r.give.map((p) => ({ type: "player", id: p.id, override: null }));
+  trade.get = r.get.map((p) => ({ type: "player", id: p.id, override: null }));
+  renderTrade();
+  $("tradeCard").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+/* ---------- Wire up the controls ---------- */
+$("strategy").addEventListener("change", () => {
+  strategyChosenByUser = true;
+  $("strategyNote").textContent = "";
+  refreshValues();
+});
+$("partner").addEventListener("change", (e) => {
+  trade.partner = +e.target.value;
+  trade.get = [];   // their players no longer apply
+  renderTrade();
+  renderSuggestions();
+});
+$("giveAdd").addEventListener("click", () => $("giveSelect").value && addToTrade("give", { type: "player", id: $("giveSelect").value }));
+$("getAdd").addEventListener("click", () => $("getSelect").value && addToTrade("get", { type: "player", id: $("getSelect").value }));
+$("givePickAdd").addEventListener("click", () => addToTrade("give", { type: "pick", label: $("givePick").value }));
+$("getPickAdd").addEventListener("click", () => addToTrade("get", { type: "pick", label: $("getPick").value }));
+for (const side of ["give", "get"]) {
+  $(side + "List").addEventListener("click", (e) => {
+    const btn = e.target.closest(".remove");
+    if (!btn) return;
+    trade[side].splice(+btn.dataset.i, 1);
+    renderTrade();
+  });
+  // Typing a value overrides the formula for that item.
+  $(side + "List").addEventListener("change", (e) => {
+    if (!e.target.matches("input")) return;
+    const v = parseFloat(e.target.value);
+    trade[side][+e.target.dataset.i].override = Number.isFinite(v) && v >= 0 ? v : null;
+    renderTrade();
+  });
+}
+
+for (const id of ["rankPos", "rankBy", "rankOwner", "minGames"]) {
+  $(id).addEventListener("change", () => { showAllRows = false; if (weeklyPoints) renderRankings(); });
+}
+$("showAll").addEventListener("click", () => { showAllRows = !showAllRows; renderRankings(); });
+
+
+$("loadLeagues").addEventListener("click", findLeagues);
+$("username").addEventListener("keydown", (e) => { if (e.key === "Enter") findLeagues(); });
+$("league").addEventListener("change", (e) => loadLeague(e.target.value));
+$("sort").addEventListener("change", render);
+$("xMeasure").addEventListener("change", render);
+
+// Chart tooltip: hover on desktop, tap on phones, Tab key for keyboard users.
+const plotEl = $("plot");
+plotEl.addEventListener("mouseover", (e) => showTip(e.target.closest(".dot")));
+plotEl.addEventListener("mouseleave", () => showTip(null));
+plotEl.addEventListener("click", (e) => showTip(e.target.closest(".dot")));
+plotEl.addEventListener("focusin", (e) => showTip(e.target.closest(".dot")));
+
+// Redraw the chart to fit when the window changes size.
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!currentTeams.length) return;
+    const xKey = $("xMeasure").value;
+    renderChart(currentTeams, xKey, classifyTeams(currentTeams, xKey));
+  }, 150);
+});
+
+// Start up: fill in the season Sleeper says is current, then load automatically.
+(async function init() {
+  const saved = storageGet("lastUsername");
+  if (saved) $("username").value = saved;
+  $("season").value = new Date().getFullYear();
+  try {
+    const state = await getJSON("/state/nfl");
+    nflState = state;
+    if (state?.league_season) $("season").value = state.league_season;
+  } catch { /* keep the calendar year */ }
+  findLeagues();
+})();
+</script>
+</body>
+</html>

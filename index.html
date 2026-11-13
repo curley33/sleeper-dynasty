@@ -162,12 +162,42 @@
   .age { font-variant-numeric: tabular-nums; font-weight: 600; }
   .age.young { color: var(--young); }
   .age.old { color: var(--old); }
+  /* ---------- Head-to-head matchups ---------- */
+  .h2h-controls { display: flex; gap: 10px; align-items: end; }
+  .score-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; margin: 10px 0 12px; }
+  .score-strip button {
+    flex: none; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    font-weight: 400; padding: 6px 10px; text-align: left; font-size: .8rem; line-height: 1.35;
+    display: grid; grid-template-columns: auto auto; column-gap: 10px;
+  }
+  .score-strip button.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .score-strip b { font-variant-numeric: tabular-nums; text-align: right; font-weight: 400; }
+  .score-strip .win { font-weight: 700; }
+  .h2h-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .h2h-grid { grid-template-columns: 1fr; } }
+  .h2h-team { border: 1px solid var(--border); border-radius: 10px; background: var(--bg); overflow: hidden; min-width: 0; }
+  .h2h-team.mine { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .h2h-team header { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .h2h-team h3 { margin: 0; font-size: 1rem; }
+  .h2h-team .meta { color: var(--muted); font-size: .8rem; }
+  .h2h-score { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .h2h-score.lead { color: var(--young); }
+  .h2h-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; padding: 10px 12px 2px; }
+  .h2h-group { list-style: none; margin: 0; padding: 0 0 4px; }
+  .h2h-group li { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; padding: 3px 12px; font-size: .88rem; }
+  .h2h-group .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .h2h-group .name small { color: var(--muted); margin-left: 4px; }
+  .h2h-group li.open .name { color: var(--muted); font-style: italic; }
+  .slot { font-size: .68rem; font-weight: 700; text-align: center; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 1px 0; }
+  .pts { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; min-width: 44px; }
+  .h2h-group.dim .pts { color: var(--muted); font-weight: 400; }
+  .h2h-none { color: var(--muted); padding: 2px 12px 8px; font-size: .85rem; }
 </style>
 </head>
 <body>
 <main>
   <h1>Dynasty Roster Viewer</h1>
-  <p class="sub">Every roster in your Sleeper league: who's young, who's winning, who should rebuild, which players are producing, and whether a trade is fair.</p>
+  <p class="sub">Every roster in your Sleeper league: this week's matchups, who's young, who's winning, who should rebuild, which players are producing, and whether a trade is fair.</p>
 
   <div class="controls">
     <label>Sleeper username
@@ -190,6 +220,22 @@
   </div>
 
   <div id="status"></div>
+  <section class="chart-card" id="h2hCard" hidden>
+    <div class="chart-head">
+      <div>
+        <h2>Head-to-head</h2>
+        <p id="h2hNote"></p>
+      </div>
+      <div class="h2h-controls">
+        <label>Week
+          <select id="h2hWeek"></select>
+        </label>
+        <button id="h2hRefresh">Refresh scores</button>
+      </div>
+    </div>
+    <div class="score-strip" id="scoreStrip"></div>
+    <div id="h2hBody"></div>
+  </section>
   <section class="chart-card" id="chartCard" hidden>
     <div class="chart-head">
       <div>
@@ -437,6 +483,7 @@ async function loadLeague(leagueId) {
     trade = { give: [], get: [], partner: null };   // new league → start a fresh trade
     strategyChosenByUser = false;
     render();
+    setupH2H();          // matchups load alongside the weekly scores
     await loadPoints(league);
     setStatus(`${league.name} · ${rosters.length} teams · loaded ${new Date().toLocaleTimeString()}`);
   } catch (err) {
@@ -1279,6 +1326,180 @@ $("suggestions").addEventListener("click", (e) => {
   trade.get = r.get.map((p) => ({ type: "player", id: p.id, override: null }));
   renderTrade();
   $("tradeCard").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+/* =====================================================================
+   Head-to-head matchups
+   /league/{id}/matchups/{week} gives each team's starters (in lineup-slot
+   order), every player on the roster that week, and each player's points.
+   Taxi and IR come from the current rosters: Sleeper doesn't keep a
+   week-by-week history of those, so past weeks show today's taxi and IR.
+   ===================================================================== */
+
+let h2h = { week: null, entries: [], focus: null, live: false };
+
+const SLOT_LABEL = { SUPER_FLEX: "SF", IDP_FLEX: "IDP", FLEX: "FLEX", REC_FLEX: "W/T", WRRB_FLEX: "W/R" };
+
+// The newest week with a matchup: the current week in season, the last scored week otherwise.
+function currentWeek(league) {
+  const st = nflState || {};
+  if (league.status === "pre_draft" || league.status === "drafting") return 0;
+  if (String(league.season) === String(st.league_season || st.season)) {
+    if (st.season_type === "pre") return 0;
+    if (st.season_type === "regular") return Math.max(1, st.week || 1);
+  }
+  return league.settings?.last_scored_leg || 17;
+}
+
+function setupH2H() {
+  const league = leagueData.league;
+  const maxWeek = currentWeek(league);
+  $("h2hCard").hidden = false;
+  h2h.focus = currentTeams.find((t) => t.isMine)?.rosterId ?? currentTeams[0]?.rosterId;
+  if (maxWeek < 1) {
+    $("h2hWeek").innerHTML = "";
+    $("scoreStrip").innerHTML = "";
+    $("h2hNote").textContent = "";
+    $("h2hBody").innerHTML = `<p class="empty">Matchups appear once the season starts.</p>`;
+    return;
+  }
+  $("h2hWeek").innerHTML = Array.from({ length: maxWeek }, (_, i) =>
+    `<option value="${i + 1}">Week ${i + 1}</option>`).join("");
+  $("h2hWeek").value = maxWeek;
+  return loadH2H(maxWeek);
+}
+
+async function loadH2H(week) {
+  const league = leagueData.league;
+  $("h2hRefresh").disabled = true;
+  try {
+    const done = completedWeeks(league);
+    const entries = await getMatchups(league.league_id, week, week < done);
+    if (leagueData.league.league_id !== league.league_id) return;   // league changed while loading
+    h2h.week = week;
+    h2h.entries = entries || [];
+    h2h.live = week > done;
+    renderH2H();
+  } catch (err) {
+    $("h2hBody").innerHTML = `<p class="empty">${escapeHTML(err.message)}</p>`;
+  } finally {
+    $("h2hRefresh").disabled = false;
+  }
+}
+
+const teamScore = (e) => e.custom_points ?? e.points ?? 0;
+const fmtPts = (v) => (v == null ? "—" : v.toFixed(2));
+
+// Group the week's entries into matchups (teams with no matchup_id are on a bye).
+function h2hPairs() {
+  const groups = {}, solo = [];
+  for (const e of h2h.entries) {
+    if (e.matchup_id == null) solo.push([e]);
+    else (groups[e.matchup_id] ||= []).push(e);
+  }
+  return [...Object.values(groups), ...solo];
+}
+
+function h2hPlayer(id, extra = "") {
+  const p = players[id] || { name: `Unknown (${id})`, pos: "?", team: "" };
+  return `<span class="name">${escapeHTML(p.name)}<small>${extra}${escapeHTML(p.team)}</small></span>`;
+}
+function posBadge(id) {
+  const pos = players[id]?.pos || "?";
+  return `<span class="pos ${IDP_POSITIONS.includes(pos) ? "IDP" : ""}">${escapeHTML(pos)}</span>`;
+}
+
+function h2hColumn(e, opp) {
+  const t = currentTeams.find((x) => x.rosterId === e.roster_id) || { teamName: `Team ${e.roster_id}`, ownerName: "" };
+  const r = leagueData.rosters.find((x) => x.roster_id === e.roster_id) || {};
+  const pts = e.players_points || {};
+  const slots = (leagueData.league.roster_positions || []).filter((s) => s !== "BN");
+  const starters = e.starters || [];
+  const taxi = r.taxi || [], ir = r.reserve || [];
+  const skip = new Set([...starters, ...taxi, ...ir]);
+  const bench = (e.players || []).filter((id) => !skip.has(id))
+    .sort((a, b) => (pts[b] ?? -1) - (pts[a] ?? -1));
+  const score = teamScore(e);
+  const lead = opp && score > teamScore(opp);
+
+  const starterRows = slots.map((slot, i) => {
+    const id = starters[i];
+    const label = `<span class="slot">${SLOT_LABEL[slot] || slot}</span>`;
+    if (!id || id === "0") return `<li class="open">${label}<span class="name">Empty slot</span><span class="pts">—</span></li>`;
+    const p = e.starters_points?.[i] ?? pts[id];
+    return `<li>${label}${h2hPlayer(id, escapeHTML(players[id]?.pos || "") + " · ")}<span class="pts">${fmtPts(p)}</span></li>`;
+  }).join("");
+
+  const benchPts = bench.reduce((s, id) => s + (pts[id] || 0), 0);
+  const list = (ids, right) => ids.length
+    ? `<ul class="h2h-group dim">${ids.map((id) => `<li>${posBadge(id)}${h2hPlayer(id)}<span class="pts">${right(id)}</span></li>`).join("")}</ul>`
+    : `<div class="h2h-none">None</div>`;
+  const record = t.wins != null ? ` · ${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""}` : "";
+
+  return `
+    <div class="h2h-team ${t.isMine ? "mine" : ""}">
+      <header>
+        <div><h3>${escapeHTML(t.teamName)}${t.isMine ? " (you)" : ""}</h3>
+          <div class="meta">${escapeHTML(t.ownerName)}${record}</div></div>
+        <div class="h2h-score ${lead ? "lead" : ""}">${fmtPts(score)}</div>
+      </header>
+      <div class="h2h-title">Starters</div>
+      <ul class="h2h-group">${starterRows}</ul>
+      <div class="h2h-title">Bench · ${fmtPts(benchPts)} pts</div>
+      ${list(bench, (id) => fmtPts(pts[id]))}
+      <div class="h2h-title">Taxi squad</div>
+      ${list(taxi, (id) => `Age ${fmtAge(exactAge(players[id] || {}))}`)}
+      ${ir.length ? `<div class="h2h-title">Injured reserve</div>${list(ir, () => "IR")}` : ""}
+    </div>`;
+}
+
+function renderH2H() {
+  const pairs = h2hPairs();
+  const week = h2h.week;
+  const pastNote = week < currentWeek(leagueData.league) ? " Taxi and IR show current rosters." : "";
+  $("h2hNote").textContent = (h2h.live
+    ? `Week ${week} is in progress. Scores are live from Sleeper; press Refresh to update.`
+    : `Final scores for week ${week}.`) + pastNote;
+
+  if (!pairs.length) {
+    $("scoreStrip").innerHTML = "";
+    $("h2hBody").innerHTML = `<p class="empty">No matchups in week ${week}.</p>`;
+    return;
+  }
+
+  // Selected matchup, with the focused team on the left.
+  const has = (p, id) => p.some((e) => e.roster_id === id);
+  const pair = [...(pairs.find((p) => has(p, h2h.focus)) || pairs[0])]
+    .sort((a, b) => (b.roster_id === h2h.focus) - (a.roster_id === h2h.focus));
+
+  // Scoreboard for the whole week, your matchup first.
+  const meId = currentTeams.find((t) => t.isMine)?.rosterId;
+  const nameOf = (id) => currentTeams.find((t) => t.rosterId === id)?.teamName || `Team ${id}`;
+  const ordered = [...pairs].sort((a, b) => has(b, meId) - has(a, meId));
+  $("scoreStrip").innerHTML = ordered.map((p) => {
+    const sides = [...p].sort((a, b) => (b.roster_id === meId) - (a.roster_id === meId));
+    const top = Math.max(...sides.map(teamScore));
+    const line = (e) => {
+      const win = sides.length > 1 && teamScore(e) === top && top > 0 ? "win" : "";
+      return `<span class="${win}">${escapeHTML(nameOf(e.roster_id))}</span><b class="${win}">${fmtPts(teamScore(e))}</b>`;
+    };
+    const rows = sides.map(line).join("") + (sides.length === 1 ? `<span>Bye</span><b></b>` : "");
+    return `<button data-roster="${sides[0].roster_id}" class="${has(p, pair[0].roster_id) ? "active" : ""}">${rows}</button>`;
+  }).join("");
+
+  $("h2hBody").innerHTML = `<div class="h2h-grid">
+    ${h2hColumn(pair[0], pair[1])}
+    ${pair[1] ? h2hColumn(pair[1], pair[0]) : `<p class="empty">No opponent this week.</p>`}
+  </div>`;
+}
+
+$("h2hWeek").addEventListener("change", (e) => loadH2H(+e.target.value));
+$("h2hRefresh").addEventListener("click", () => h2h.week && loadH2H(h2h.week));
+$("scoreStrip").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-roster]");
+  if (!btn) return;
+  h2h.focus = +btn.dataset.roster;
+  renderH2H();
 });
 
 /* ---------- Wire up the controls ---------- */

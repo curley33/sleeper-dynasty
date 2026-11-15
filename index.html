@@ -192,12 +192,72 @@
   .pts { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; min-width: 44px; }
   .h2h-group.dim .pts { color: var(--muted); font-weight: 400; }
   .h2h-none { color: var(--muted); padding: 2px 12px 8px; font-size: .85rem; }
+  /* ---------- Clickable player names ---------- */
+  button.plink {
+    background: none; border: 0; padding: 0; margin: 0; font: inherit; font-weight: inherit; color: inherit;
+    cursor: pointer; text-align: left; text-decoration: underline dotted var(--muted); text-underline-offset: 3px;
+  }
+  button.plink:hover { color: var(--accent); }
+
+  /* ---------- Head-to-head extras ---------- */
+  .ltp { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .ltp b { color: var(--text); font-weight: 600; }
+  .ltp .live b { color: var(--young); }
+  .proj-line { font-size: .78rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .h2h-group li.h2h-row { align-items: start; padding: 5px 12px; }
+  .h2h-row .slot { margin-top: 2px; }
+  .who { min-width: 0; }
+  .who .top { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .who .top .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .who .top small { color: var(--muted); white-space: nowrap; }
+  .who .line { color: var(--muted); font-size: .76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pts small { display: block; color: var(--muted); font-weight: 400; font-size: .72rem; }
+  .chip { font-size: .64rem; font-weight: 700; border-radius: 4px; padding: 0 4px; white-space: nowrap; border: 1px solid var(--border); color: var(--muted); }
+  .chip.live { color: var(--young); border-color: var(--young); }
+  .chip.bye, .chip.inj { color: var(--old); border-color: var(--old); }
+
+  /* ---------- Lineup optimizer ---------- */
+  .opt-head { font-size: 1.02rem; font-weight: 700; margin: 10px 0 6px; }
+  .opt-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+  @media (max-width: 700px) { .opt-cols { grid-template-columns: 1fr; } }
+  .opt-box { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--bg); }
+  .opt-box h3 { margin: 0 0 6px; font-size: .9rem; }
+  .opt-box ul { list-style: none; margin: 0; padding: 0; }
+  .opt-box li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: .88rem; }
+  .warn { color: var(--old); font-size: .88rem; margin: 2px 0; }
+  tr.changed td { background: var(--accent-soft); }
+  td.muted, span.muted { color: var(--muted); }
+
+  /* ---------- Usage ---------- */
+  .badge { font-size: .66rem; font-weight: 700; border-radius: 4px; padding: 1px 5px; margin-left: 6px; background: var(--young); color: #fff; }
+
+  /* ---------- Player detail dialog ---------- */
+  dialog#playerDlg {
+    width: min(900px, calc(100% - 20px)); max-height: calc(100% - 30px); padding: 0;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--text);
+  }
+  dialog#playerDlg::backdrop { background: rgba(0,0,0,.45); }
+  .dlg-head { display: flex; justify-content: space-between; align-items: start; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); z-index: 1; }
+  .dlg-head h2 { margin: 0; font-size: 1.2rem; }
+  .dlg-head .meta { color: var(--muted); font-size: .85rem; }
+  .dlg-head button { background: transparent; color: var(--muted); font-size: 1.4rem; padding: 0 6px; line-height: 1; }
+  .dlg-body { padding: 14px 16px 18px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .kpi { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg); }
+  .kpi span { display: block; color: var(--muted); font-size: .72rem; }
+  .kpi b { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 700px) { .charts { grid-template-columns: 1fr; } }
+  .charts h3 { margin: 0 0 4px; font-size: .85rem; color: var(--muted); font-weight: 600; }
+  .charts svg { width: 100%; height: auto; display: block; }
+  .charts text { fill: var(--muted); font-size: 10px; }
+  .log { overflow-x: auto; }
 </style>
 </head>
 <body>
 <main>
   <h1>Dynasty Roster Viewer</h1>
-  <p class="sub">Every roster in your Sleeper league: this week's matchups, who's young, who's winning, who should rebuild, which players are producing, and whether a trade is fair.</p>
+  <p class="sub">Every roster in your Sleeper league: this week's matchups and best lineup, who's young, who's winning, who should rebuild, which players are producing or getting more work, and whether a trade is fair. Click any player for his game log.</p>
 
   <div class="controls">
     <label>Sleeper username
@@ -235,6 +295,21 @@
     </div>
     <div class="score-strip" id="scoreStrip"></div>
     <div id="h2hBody"></div>
+  </section>
+  <section class="summary" id="optCard" hidden>
+    <div class="chart-head">
+      <div>
+        <h2>Lineup optimizer</h2>
+        <p class="rank-note" id="optNote"></p>
+      </div>
+      <div class="h2h-controls">
+        <label>Team
+          <select id="optTeam"></select>
+        </label>
+        <button id="optRefresh">Re-check lineup</button>
+      </div>
+    </div>
+    <div id="optBody"></div>
   </section>
   <section class="chart-card" id="chartCard" hidden>
     <div class="chart-head">
@@ -301,16 +376,60 @@
     <button class="ghost" id="showAll" hidden>Show all</button>
   </section>
 
+  <section class="summary" id="usageCard" hidden>
+    <h2>Usage and opportunity</h2>
+    <p class="rank-note">How much each player is being used, not just what he scored. A <b>Usage up</b> tag means his
+      workload over the last 3 weeks is up at least 15% but his points haven't caught up yet. Those are buy-low and waiver targets.</p>
+    <div class="rank-controls">
+      <label>Position
+        <select id="usePos">
+          <option>RB</option><option>WR</option><option>TE</option><option>QB</option>
+          <option>DL</option><option>LB</option><option>DB</option>
+        </select>
+      </label>
+      <label>Weeks
+        <select id="useWin">
+          <option value="season">Whole season</option>
+          <option value="last3">Last 3 weeks</option>
+        </select>
+      </label>
+      <label>Sort by
+        <select id="useSort">
+          <option value="opp">Opportunity per game</option>
+          <option value="trend">Usage trend</option>
+          <option value="snap">Snap share</option>
+          <option value="ppg">Points per game</option>
+        </select>
+      </label>
+      <label>Show
+        <select id="useOwner">
+          <option value="all">All players</option>
+          <option value="mine">My team</option>
+          <option value="others">Other teams</option>
+          <option value="available">Not on a roster</option>
+        </select>
+      </label>
+    </div>
+    <div id="usageTable"></div>
+    <button class="ghost" id="useAll" hidden>Show all</button>
+  </section>
+
   <section class="summary" id="tradeCard" hidden>
     <h2>Trade calculator</h2>
     <p class="rank-note">Values (0–100) blend each player's points per game above a replacement-level starter
-      with an age curve for his position. They're a starting point, so type over any value to use your own.</p>
+      with an age curve for his position. "Points + usage" also weighs recent form, this week's projection and whether his workload is rising or falling. They're a starting point, so type over any value to use your own.</p>
     <div class="rank-controls">
       <label>Strategy
         <select id="strategy">
           <option value="contend">Contending (now matters most)</option>
           <option value="balanced">Balanced</option>
           <option value="rebuild">Rebuilding (youth matters most)</option>
+        </select>
+      </label>
+      <label>Value model
+        <select id="valueModel">
+          <option value="usage">Points + usage (recommended)</option>
+          <option value="points">Points only</option>
         </select>
       </label>
       <label>Trade partner
@@ -344,6 +463,14 @@
   </section>
   <section id="teams" class="grid"></section>
 </main>
+
+<dialog id="playerDlg" aria-labelledby="dlgTitle">
+  <div class="dlg-head">
+    <div><h2 id="dlgTitle"></h2><div class="meta" id="dlgMeta"></div></div>
+    <button id="dlgClose" aria-label="Close">×</button>
+  </div>
+  <div class="dlg-body" id="dlgBody"></div>
+</dialog>
 
 <script>
 /* =====================================================================
@@ -382,7 +509,7 @@ function storageGet(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
 }
 function storageSet(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
 }
 
 // Sleeper's "age" field can lag behind, so calculate it from birth_date when we have one.
@@ -405,7 +532,7 @@ async function loadPlayers() {
   if (players) return players;
 
   const today = new Date().toISOString().slice(0, 10);
-  const cached = storageGet("sleeperPlayers");
+  const cached = storageGet("sleeperPlayers2");
   if (cached && cached.date === today) {
     players = cached.players;
     return players;
@@ -424,9 +551,17 @@ async function loadPlayers() {
       age: p.age ?? null,
       birth_date: p.birth_date || null,
       exp: p.years_exp ?? null,
+      inj: p.injury_status || null,
     };
   }
-  storageSet("sleeperPlayers", { date: today, players });
+  try { localStorage.removeItem("sleeperPlayers"); } catch { /* ignore */ }   // older format
+  if (!storageSet("sleeperPlayers2", { date: today, players })) {
+    // Storage is full: drop cached weeks (they re-download) and try once more.
+    try {
+      for (const k of Object.keys(localStorage)) if (/^(stats|matchups):/.test(k)) localStorage.removeItem(k);
+    } catch { /* ignore */ }
+    storageSet("sleeperPlayers2", { date: today, players });
+  }
   return players;
 }
 
@@ -481,10 +616,12 @@ async function loadLeague(leagueId) {
     leagueData = { league, rosters, users };
     storageSet("lastLeague", leagueId);
     trade = { give: [], get: [], partner: null };   // new league → start a fresh trade
+    weeklyStats = {}; projCache = {}; schedule = null; usageCache = null;
     strategyChosenByUser = false;
     render();
     setupH2H();          // matchups load alongside the weekly scores
     await loadPoints(league);
+    await loadExtras(league);
     setStatus(`${league.name} · ${rosters.length} teams · loaded ${new Date().toLocaleTimeString()}`);
   } catch (err) {
     setStatus(err.message, true);
@@ -765,7 +902,7 @@ function render() {
         ${sortPlayers(t.roster, sortMode).map((p) => `
           <li>
             <span class="pos ${p.isIDP ? "IDP" : ""}">${escapeHTML(p.pos)}</span>
-            <span class="name">${escapeHTML(p.name)}<small>${escapeHTML(p.team)}</small>${
+            <span class="name">${nameBtn(p.id, p.name)}<small>${escapeHTML(p.team)}</small>${injChip(p.id)}${
               p.starter ? '<span class="tag">START</span>' : ""}${
               p.taxi ? '<span class="tag">TAXI</span>' : ""}${
               p.ir ? '<span class="tag">IR</span>' : ""}</span>
@@ -919,7 +1056,7 @@ function renderRankings() {
           return `
           <tr class="${r.owner?.isMine ? "mine" : ""}">
             <td>${i + 1}</td>
-            <td>${escapeHTML(r.name)}<small>${escapeHTML(r.team)}</small></td>
+            <td>${nameBtn(r.id, r.name)}<small>${escapeHTML(r.team)}</small></td>
             <td><span class="pos ${IDP_POSITIONS.includes(r.pos) ? "IDP" : ""}">${escapeHTML(r.pos)}</span></td>
             <td class="num">${fmtAge(r.age)}</td>
             <td>${r.owner ? escapeHTML(r.owner.teamName) : "<small>Not rostered</small>"}</td>
@@ -999,11 +1136,25 @@ function computeValueSet(strategy) {
   const slots = startingSlots();
   const rows = buildPlayerRows();
 
+  // "Points + usage" model: blend season form with recent form and this week's
+  // projection, then nudge for rising or falling workload.
+  const useUsage = $("valueModel").value === "usage";
+  const cw = currentWeek(leagueData.league);
+  for (const r of rows) {
+    r.eff = r.ppg;
+    if (!useUsage || !r.games) continue;
+    const recent = r.last3 ?? r.ppg;
+    const proj = projOf(r.id, cw);
+    r.eff = proj > 0 ? 0.55 * r.ppg + 0.25 * recent + 0.2 * proj : 0.7 * r.ppg + 0.3 * recent;
+    const trend = usageCache?.[r.id]?.trend;
+    if (trend != null) r.eff *= 1 + 0.4 * Math.max(-0.3, Math.min(0.3, trend));
+  }
+
   // Replacement level: the points/game of the first non-starter at each position.
   const replacement = {};
   for (const g of Object.keys(slots)) {
     const ppgs = rows.filter((r) => groupOf(r.pos) === g && r.games >= 2)
-      .map((r) => r.ppg).sort((a, b) => b - a);
+      .map((r) => r.eff).sort((a, b) => b - a);
     const n = Math.round(teamsCount * slots[g]);
     replacement[g] = ppgs[n] ?? ppgs[ppgs.length - 1] ?? 0;
   }
@@ -1011,13 +1162,13 @@ function computeValueSet(strategy) {
   // Every player with points, plus rostered players without any (rookies, injured).
   const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
   for (const t of currentTeams) for (const p of t.roster) {
-    if (!byId[p.id]) byId[p.id] = { id: p.id, pos: p.pos, age: p.ageExact, ppg: 0, games: 0 };
+    if (!byId[p.id]) byId[p.id] = { id: p.id, pos: p.pos, age: p.ageExact, ppg: 0, eff: 0, games: 0 };
   }
 
   const raw = {};
   for (const r of Object.values(byId)) {
     const g = groupOf(r.pos);
-    const surplus = slots[g] ? Math.max(0, r.ppg - replacement[g]) + 1 : 0.5;
+    const surplus = slots[g] ? Math.max(0, r.eff - replacement[g]) + 1 : 0.5;
     const decline = VALUE_SETTINGS.declineAge[g] ?? 29;
     const ageMult = r.age == null ? 1 : Math.min(1.75, Math.max(0.25, (decline + 2 - r.age) / 4));
     raw[r.id] = { raw: surplus * (1 - w + w * ageMult), ppg: r.ppg, ageMult };
@@ -1299,7 +1450,7 @@ function renderSuggestions() {
   const playerLine = (p) => {
     const info = players[p.id] || { name: p.id, pos: "?" };
     return `<div class="sug-player"><span class="pos ${IDP_POSITIONS.includes(info.pos) ? "IDP" : ""}">${escapeHTML(info.pos)}</span>
-      <span>${escapeHTML(info.name)} <em>${fmtAge(exactAge(info))} yrs · ${p.ppg.toFixed(1)} ppg</em></span></div>`;
+      <span>${nameBtn(p.id, info.name)} <em>${fmtAge(exactAge(info))} yrs · ${p.ppg.toFixed(1)} ppg</em></span></div>`;
   };
   const goalName = { contend: "contending", rebuild: "rebuilding", balanced: "balanced" };
 
@@ -1336,7 +1487,7 @@ $("suggestions").addEventListener("click", (e) => {
    week-by-week history of those, so past weeks show today's taxi and IR.
    ===================================================================== */
 
-let h2h = { week: null, entries: [], focus: null, live: false };
+let h2h = { week: null, entries: [], focus: null, live: false, stats: null };
 
 const SLOT_LABEL = { SUPER_FLEX: "SF", IDP_FLEX: "IDP", FLEX: "FLEX", REC_FLEX: "W/T", WRRB_FLEX: "W/R" };
 
@@ -1374,12 +1525,21 @@ async function loadH2H(week) {
   $("h2hRefresh").disabled = true;
   try {
     const done = completedWeeks(league);
-    const entries = await getMatchups(league.league_id, week, week < done);
+    const live = week > done;
+    const [entries, stats] = await Promise.all([
+      getMatchups(league.league_id, week, week < done),
+      !live && weeklyStats[week] ? weeklyStats[week]
+        : getWeekStats(league.league_id, league.season, week, false).catch(() => null),
+      loadProjections(league.season, week).catch(() => null),
+      live || !schedule ? loadSchedule(league.season).catch(() => null) : null,
+    ]);
     if (leagueData.league.league_id !== league.league_id) return;   // league changed while loading
     h2h.week = week;
     h2h.entries = entries || [];
-    h2h.live = week > done;
+    h2h.live = live;
+    h2h.stats = stats;
     renderH2H();
+    if (live && week === currentWeek(league) && !$("optCard").hidden) renderOptimizer();   // fresher game status
   } catch (err) {
     $("h2hBody").innerHTML = `<p class="empty">${escapeHTML(err.message)}</p>`;
   } finally {
@@ -1409,10 +1569,38 @@ function posBadge(id) {
   return `<span class="pos ${IDP_POSITIONS.includes(pos) ? "IDP" : ""}">${escapeHTML(pos)}</span>`;
 }
 
+// "Left to play (4): QB, RB (2), WR" style summary of a lineup's games.
+function leftToPlay(starterIds, week) {
+  if (!schedule) return "";
+  const groups = { pre: [], live: [], done: [], bye: [] };
+  for (const id of starterIds) {
+    if (!id || id === "0") continue;
+    const p = players[id] || {};
+    groups[gameState(p.team, week) || "pre"].push(posLabel(p.pos));
+  }
+  const order = ["QB", "RB", "WR", "TE", "K", "DL", "LB", "DB", "DEF"];
+  const list = (arr) => {
+    const counts = {};
+    for (const pos of arr) counts[pos] = (counts[pos] || 0) + 1;
+    return Object.keys(counts)
+      .sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99))
+      .map((pos) => (counts[pos] > 1 ? `${pos} (${counts[pos]})` : pos)).join(", ");
+  };
+  if (!groups.pre.length && !groups.live.length) return `<div class="ltp"><span>All games final</span></div>`;
+  const parts = [];
+  if (groups.pre.length) parts.push(`<span>Left to play (${groups.pre.length}): <b>${list(groups.pre)}</b></span>`);
+  if (groups.live.length) parts.push(`<span class="live">Playing now (${groups.live.length}): <b>${list(groups.live)}</b></span>`);
+  if (groups.done.length) parts.push(`<span>Done (${groups.done.length})</span>`);
+  if (groups.bye.length) parts.push(`<span>Bye (${groups.bye.length}): <b>${list(groups.bye)}</b></span>`);
+  return `<div class="ltp">${parts.join("")}</div>`;
+}
+
 function h2hColumn(e, opp) {
   const t = currentTeams.find((x) => x.rosterId === e.roster_id) || { teamName: `Team ${e.roster_id}`, ownerName: "" };
   const r = leagueData.rosters.find((x) => x.roster_id === e.roster_id) || {};
   const pts = e.players_points || {};
+  const week = h2h.week;
+  const stats = h2h.stats || {};
   const slots = (leagueData.league.roster_positions || []).filter((s) => s !== "BN");
   const starters = e.starters || [];
   const taxi = r.taxi || [], ir = r.reserve || [];
@@ -1421,18 +1609,45 @@ function h2hColumn(e, opp) {
     .sort((a, b) => (pts[b] ?? -1) - (pts[a] ?? -1));
   const score = teamScore(e);
   const lead = opp && score > teamScore(opp);
+  const hasProj = !!projCache[week];
+
+  // Projected total: before kickoff it's the projection; during the week, finished
+  // games count their actual points and unfinished games their projection.
+  let proj = 0;
+  slots.forEach((_, i) => {
+    const id = starters[i];
+    if (!id || id === "0") return;
+    const pr = projOf(id, week) ?? 0;
+    const actual = e.starters_points?.[i] ?? pts[id] ?? 0;
+    const gs = gameState(players[id]?.team, week);
+    proj += !h2h.live ? pr : gs === "done" ? actual : gs === "live" ? Math.max(actual, pr) : gs === "bye" ? 0 : pr;
+  });
+
+  const row = (label, id, p) => {
+    const info = players[id] || {};
+    const pr = projOf(id, week);
+    const chips = h2h.live ? gameChip(gameState(info.team, week), info.team, week) + injChip(id) : "";
+    return `<li class="h2h-row">${label}
+      <div class="who">
+        <div class="top"><span class="nm">${nameBtn(id)}</span><small>${escapeHTML(info.pos || "")} · ${escapeHTML(info.team || "")}</small>${chips}</div>
+        <div class="line">${statLine(id, stats[id])}</div>
+      </div>
+      <span class="pts">${fmtPts(p)}${pr != null ? `<small>proj ${pr.toFixed(1)}</small>` : ""}</span></li>`;
+  };
 
   const starterRows = slots.map((slot, i) => {
     const id = starters[i];
     const label = `<span class="slot">${SLOT_LABEL[slot] || slot}</span>`;
     if (!id || id === "0") return `<li class="open">${label}<span class="name">Empty slot</span><span class="pts">—</span></li>`;
-    const p = e.starters_points?.[i] ?? pts[id];
-    return `<li>${label}${h2hPlayer(id, escapeHTML(players[id]?.pos || "") + " · ")}<span class="pts">${fmtPts(p)}</span></li>`;
+    return row(label, id, e.starters_points?.[i] ?? pts[id]);
   }).join("");
 
   const benchPts = bench.reduce((s, id) => s + (pts[id] || 0), 0);
   const list = (ids, right) => ids.length
-    ? `<ul class="h2h-group dim">${ids.map((id) => `<li>${posBadge(id)}${h2hPlayer(id)}<span class="pts">${right(id)}</span></li>`).join("")}</ul>`
+    ? `<ul class="h2h-group dim">${ids.map((id) => `<li>${posBadge(id)}<span class="name">${nameBtn(id)}<small>${escapeHTML(players[id]?.team || "")}</small></span><span class="pts">${right(id)}</span></li>`).join("")}</ul>`
+    : `<div class="h2h-none">None</div>`;
+  const benchList = bench.length
+    ? `<ul class="h2h-group dim">${bench.map((id) => row(posBadge(id), id, pts[id])).join("")}</ul>`
     : `<div class="h2h-none">None</div>`;
   const record = t.wins != null ? ` · ${t.wins}-${t.losses}${t.ties ? "-" + t.ties : ""}` : "";
 
@@ -1441,12 +1656,16 @@ function h2hColumn(e, opp) {
       <header>
         <div><h3>${escapeHTML(t.teamName)}${t.isMine ? " (you)" : ""}</h3>
           <div class="meta">${escapeHTML(t.ownerName)}${record}</div></div>
-        <div class="h2h-score ${lead ? "lead" : ""}">${fmtPts(score)}</div>
+        <div>
+          <div class="h2h-score ${lead ? "lead" : ""}">${fmtPts(score)}</div>
+          ${hasProj ? `<div class="proj-line">${h2h.live ? "Proj. final" : "Projected"} ${proj.toFixed(1)}</div>` : ""}
+        </div>
       </header>
+      ${leftToPlay(starters, week)}
       <div class="h2h-title">Starters</div>
       <ul class="h2h-group">${starterRows}</ul>
       <div class="h2h-title">Bench · ${fmtPts(benchPts)} pts</div>
-      ${list(bench, (id) => fmtPts(pts[id]))}
+      ${benchList}
       <div class="h2h-title">Taxi squad</div>
       ${list(taxi, (id) => `Age ${fmtAge(exactAge(players[id] || {}))}`)}
       ${ir.length ? `<div class="h2h-title">Injured reserve</div>${list(ir, () => "IR")}` : ""}
@@ -1502,7 +1721,638 @@ $("scoreStrip").addEventListener("click", (e) => {
   renderH2H();
 });
 
+/* =====================================================================
+   Stage 5: detailed stats, projections and the NFL schedule
+   Three more free Sleeper sources (not in Sleeper's official docs, but
+   widely used, so they could change without warning):
+   • /stats/nfl/regular/{season}/{week}       every stat for every player
+   • /projections/nfl/regular/{season}/{week} projected stats
+   • api.sleeper.com/schedule/nfl/regular/{season}  games + live status
+   Points are worked out from the raw stats with YOUR league's scoring
+   rules, which matches Sleeper's own numbers exactly.
+   ===================================================================== */
+
+// The stats we keep (the full feed has ~100 fields per player).
+const STAT_KEEP = [
+  "gp", "off_snp", "def_snp", "tm_off_snp", "tm_def_snp",
+  "pass_att", "pass_cmp", "pass_yd", "pass_td", "pass_int", "pass_rz_att",
+  "rush_att", "rush_yd", "rush_td", "rush_rz_att",
+  "rec_tgt", "rec", "rec_yd", "rec_td", "rec_air_yd", "rec_yac", "rec_rz_tgt",
+  "fga", "fgm", "fgm_lng", "xpa", "xpm",
+  "idp_tkl_solo", "idp_tkl_ast", "idp_tkl_loss", "idp_sack", "idp_qb_hit",
+  "idp_pass_def", "idp_int", "idp_ff", "idp_fum_rec", "idp_def_td",
+];
+
+let weeklyStats = {};   // week → { playerId: { …stats, pts } }
+let projCache = {};     // week → { playerId: projected league points }
+let schedule = null;    // week → { TEAM: { status, date, opp, home } }
+let usageCache = null;  // playerId → usage summary (see usageAll)
+let extrasError = null;
+
+function scoreStats(s) {
+  const sc = leagueData.league.scoring_settings || {};
+  let total = 0;
+  for (const k in sc) if (typeof s[k] === "number") total += s[k] * sc[k];
+  return total;
+}
+
+// Projections use a couple of broader kicker buckets than league scoring does.
+function scoreProjection(s) {
+  const sc = leagueData.league.scoring_settings || {};
+  const x = { ...s };
+  if (x.fgm_50p != null && sc.fgm_50p == null && x.fgm_50_59 == null) x.fgm_50_59 = x.fgm_50p;
+  if (x.fgmiss == null) {
+    x.fgmiss = Object.keys(x).filter((k) => k.startsWith("fgmiss_")).reduce((a, k) => a + x[k], 0);
+  }
+  return scoreStats(x);
+}
+
+function slimStats(all) {
+  const out = {};
+  for (const [id, s] of Object.entries(all || {})) {
+    if (!(s.gp > 0 || s.off_snp > 0 || s.def_snp > 0)) continue;
+    const o = { pts: Math.round(scoreStats(s) * 100) / 100 };
+    for (const k of STAT_KEEP) if (s[k] != null) o[k] = s[k];
+    out[id] = o;
+  }
+  return out;
+}
+
+async function getWeekStats(leagueId, season, week, canCache) {
+  const key = `stats:${leagueId}:${week}`;
+  if (canCache) {
+    const hit = storageGet(key);
+    if (hit) return hit;
+  }
+  const data = slimStats(await getJSON(`/stats/nfl/regular/${season}/${week}`));
+  if (canCache) storageSet(key, data);
+  return data;
+}
+
+async function loadProjections(season, week) {
+  if (projCache[week]) return projCache[week];
+  const all = await getJSON(`/projections/nfl/regular/${season}/${week}`);
+  const map = {};
+  for (const [id, s] of Object.entries(all || {})) {
+    const v = scoreProjection(s);
+    if (v) map[id] = Math.round(v * 100) / 100;
+  }
+  return (projCache[week] = map);
+}
+const projOf = (id, week) => projCache[week ?? currentWeek(leagueData.league)]?.[id] ?? null;
+
+async function loadSchedule(season) {
+  const res = await fetch(`https://api.sleeper.com/schedule/nfl/regular/${season}`);
+  if (!res.ok) throw new Error(`Schedule returned ${res.status}`);
+  const byWeek = {};
+  for (const g of await res.json()) {
+    const w = (byWeek[g.week] ||= {});
+    w[g.home] = { status: g.status, date: g.date, opp: g.away, home: true };
+    w[g.away] = { status: g.status, date: g.date, opp: g.home, home: false };
+  }
+  schedule = byWeek;
+}
+
+const gameOf = (team, week) => schedule?.[week]?.[team] || null;
+
+// "pre" (not started), "live", "done", "bye", or null if the schedule isn't loaded.
+function gameState(team, week) {
+  if (!schedule) return null;
+  if (!team || team === "FA") return "bye";
+  const g = gameOf(team, week);
+  if (!g) return "bye";
+  return g.status === "complete" ? "done" : g.status === "in_game" ? "live" : "pre";
+}
+
+function gameChip(state, team, week) {
+  if (state === "live") return `<span class="chip live">LIVE</span>`;
+  if (state === "done") return `<span class="chip">FINAL</span>`;
+  if (state === "bye") return `<span class="chip bye">BYE</span>`;
+  if (state === "pre") {
+    const g = gameOf(team, week);
+    const day = g?.date ? new Date(g.date + "T12:00").toLocaleDateString(undefined, { weekday: "short" }) : "";
+    return `<span class="chip">${escapeHTML(day.toUpperCase())}</span>`;
+  }
+  return "";
+}
+
+const INJ_SHORT = { Questionable: "Q", Doubtful: "D", Out: "OUT", IR: "IR", PUP: "PUP", Sus: "SUS", NA: "NA" };
+const injChip = (id) => {
+  const s = players[id]?.inj;
+  return s && INJ_SHORT[s] ? `<span class="chip inj" title="${escapeHTML(s)}">${INJ_SHORT[s]}</span>` : "";
+};
+const isOut = (id) => ["Out", "IR", "PUP", "Sus", "NA"].includes(players[id]?.inj);
+
+// A clickable player name that opens the detail panel.
+const nameBtn = (id, name) =>
+  `<button class="plink" data-pid="${escapeHTML(id)}">${escapeHTML(name ?? players[id]?.name ?? id)}</button>`;
+
+// Load the extra data after the league's weekly points are in.
+async function loadExtras(league) {
+  const season = league.season;
+  const last = completedWeeks(league);
+  const cw = currentWeek(league);
+  extrasError = null;
+  try {
+    setStatus("Loading detailed stats, projections and the NFL schedule…");
+    const weeks = Array.from({ length: last }, (_, i) => i + 1);
+    const [stats] = await Promise.all([
+      Promise.all(weeks.map((w) => getWeekStats(league.league_id, season, w, w < last))),
+      cw ? loadProjections(season, cw) : null,
+      loadSchedule(season),
+    ]);
+    if (leagueData.league.league_id !== league.league_id) return;
+    weeklyStats = {};
+    weeks.forEach((w, i) => (weeklyStats[w] = stats[i]));
+    usageCache = usageAll();
+  } catch (err) {
+    console.warn(err);
+    extrasError = err.message;
+  }
+  refreshValues();
+  renderUsage();
+  renderOptimizer();
+  if (h2h.week) loadH2H(h2h.week);
+}
+
+/* ---------- Position helpers ---------- */
+
+function kindOf(pos) {
+  if (pos === "QB" || pos === "RB" || pos === "K") return pos;
+  if (pos === "WR" || pos === "TE") return "REC";
+  if (IDP_POSITIONS.includes(pos)) return "IDP";
+  return null;
+}
+const posLabel = (pos) => groupOf(pos);   // DE/DT → DL, CB/S → DB
+
+// "Opportunity" = the workload that leads to points at each position.
+const OPP = {
+  QB: (s) => (s.pass_att || 0) + (s.rush_att || 0),
+  RB: (s) => (s.rush_att || 0) + (s.rec_tgt || 0),
+  REC: (s) => s.rec_tgt || 0,
+  IDP: (s) => (s.idp_tkl_solo || 0) + (s.idp_tkl_ast || 0),
+  K: (s) => s.fga || 0,
+};
+const OPP_LABEL = { QB: "Pass + rush attempts", RB: "Carries + targets", REC: "Targets", IDP: "Tackles", K: "Field goal attempts" };
+
+const n0 = (v) => v || 0;
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// A short line of key stats, e.g. "5/9 rec, 102 yd, 1 TD".
+function statLine(id, s) {
+  if (!s) return "";
+  const k = kindOf(players[id]?.pos);
+  const parts = [];
+  const td = n0(s.pass_td) + n0(s.rush_td) + n0(s.rec_td);
+  if (k === "QB") {
+    parts.push(`${n0(s.pass_cmp)}/${n0(s.pass_att)}, ${n0(s.pass_yd)} yd`);
+    if (s.pass_td) parts.push(`${s.pass_td} TD`);
+    if (s.pass_int) parts.push(`${s.pass_int} INT`);
+    if (s.rush_yd || s.rush_td) parts.push(`${n0(s.rush_yd)} rush yd${s.rush_td ? `, ${s.rush_td} rush TD` : ""}`);
+  } else if (k === "RB") {
+    parts.push(`${n0(s.rush_att)} car, ${n0(s.rush_yd)} yd`);
+    if (s.rec_tgt) parts.push(`${n0(s.rec)}/${s.rec_tgt} rec, ${n0(s.rec_yd)} yd`);
+    if (td) parts.push(`${td} TD`);
+  } else if (k === "REC") {
+    parts.push(`${n0(s.rec)}/${n0(s.rec_tgt)} rec, ${n0(s.rec_yd)} yd`);
+    if (td) parts.push(`${td} TD`);
+  } else if (k === "K") {
+    parts.push(`${n0(s.fgm)}/${n0(s.fga)} FG`, `${n0(s.xpm)}/${n0(s.xpa)} XP`);
+    if (s.fgm_lng) parts.push(`long ${s.fgm_lng}`);
+  } else if (k === "IDP") {
+    parts.push(`${n0(s.idp_tkl_solo) + n0(s.idp_tkl_ast)} tkl`);
+    if (s.idp_sack) parts.push(`${s.idp_sack} sack`);
+    if (s.idp_tkl_loss) parts.push(`${s.idp_tkl_loss} TFL`);
+    if (s.idp_qb_hit) parts.push(`${s.idp_qb_hit} QB hit`);
+    if (s.idp_pass_def) parts.push(`${s.idp_pass_def} PD`);
+    if (s.idp_int) parts.push(`${s.idp_int} INT`);
+    if (s.idp_ff) parts.push(`${s.idp_ff} FF`);
+    if (s.idp_def_td) parts.push(`${s.idp_def_td} TD`);
+  }
+  return escapeHTML(parts.join(", "));
+}
+
+/* =====================================================================
+   Usage and opportunity
+   ===================================================================== */
+
+// Team totals each week, for target share and carry share.
+function teamTotals() {
+  const out = {};
+  for (const [w, wk] of Object.entries(weeklyStats)) {
+    const t = (out[w] = {});
+    for (const [id, s] of Object.entries(wk)) {
+      const team = players[id]?.team;
+      if (!team || team === "FA") continue;
+      const x = (t[team] ||= { tgt: 0, rush: 0 });
+      x.tgt += n0(s.rec_tgt);
+      x.rush += n0(s.rush_att);
+    }
+  }
+  return out;
+}
+
+const SUM_KEYS = [...STAT_KEEP.filter((k) => !k.startsWith("tm_") && !["gp", "off_snp", "def_snp", "fgm_lng"].includes(k)), "pts"];
+
+function summarize(id, weeks, tt) {
+  const p = players[id];
+  const idp = IDP_POSITIONS.includes(p.pos);
+  const u = { g: 0, snaps: 0, teamSnaps: 0, teamTgt: 0, teamRush: 0, agg: {} };
+  for (const w of weeks) {
+    const s = weeklyStats[w]?.[id];
+    if (!s) continue;
+    const snp = idp ? n0(s.def_snp) : n0(s.off_snp);
+    if (!snp && !s.gp) continue;
+    u.g++;
+    u.snaps += snp;
+    u.teamSnaps += idp ? n0(s.tm_def_snp) : n0(s.tm_off_snp);
+    for (const k of SUM_KEYS) u.agg[k] = (u.agg[k] || 0) + n0(s[k]);
+    const team = tt[w]?.[p.team];
+    if (team) { u.teamTgt += team.tgt; u.teamRush += team.rush; }
+  }
+  u.snapPct = u.teamSnaps ? u.snaps / u.teamSnaps : null;
+  u.tgtShare = u.teamTgt ? n0(u.agg.rec_tgt) / u.teamTgt : null;
+  u.rushShare = u.teamRush ? n0(u.agg.rush_att) / u.teamRush : null;
+  u.ppg = u.g ? u.agg.pts / u.g : 0;
+  u.opp = u.g ? OPP[kindOf(p.pos)](u.agg) / u.g : 0;
+  return u;
+}
+
+// Season and last-3-week usage for every player, plus the trend between them.
+function usageAll() {
+  const weeks = Object.keys(weeklyStats).map(Number).sort((a, b) => a - b);
+  const recentW = weeks.slice(-3), earlierW = weeks.slice(0, -3);
+  const tt = teamTotals();
+  const ids = new Set();
+  for (const wk of Object.values(weeklyStats)) for (const id of Object.keys(wk)) ids.add(id);
+
+  const out = {};
+  for (const id of ids) {
+    const p = players[id];
+    const k = p && kindOf(p.pos);
+    if (!k || k === "K") continue;
+    const season = summarize(id, weeks, tt);
+    if (!season.g) continue;
+    const recent = summarize(id, recentW, tt);
+    const earlier = summarize(id, earlierW, tt);
+    const ok = earlier.g >= 2 && recent.g >= 1 && earlier.opp > 0;
+    out[id] = {
+      season, recent,
+      trend: ok ? recent.opp / earlier.opp - 1 : null,
+      ptsTrend: ok && earlier.ppg > 0 ? recent.ppg / earlier.ppg - 1 : null,
+    };
+  }
+  return out;
+}
+
+const pct = (v) => (v == null ? "—" : Math.round(v * 100) + "%");
+const per = (v) => (v == null || !isFinite(v) ? "—" : v.toFixed(1));
+
+const USAGE_COLS = {
+  QB: [
+    ["Pass att/g", (u) => u.agg.pass_att / u.g, per],
+    ["Rush att/g", (u) => u.agg.rush_att / u.g, per],
+    ["Red-zone plays/g", (u) => (n0(u.agg.pass_rz_att) + n0(u.agg.rush_rz_att)) / u.g, per],
+  ],
+  RB: [
+    ["Carries/g", (u) => u.agg.rush_att / u.g, per],
+    ["Targets/g", (u) => u.agg.rec_tgt / u.g, per],
+    ["Carry share", (u) => u.rushShare, pct],
+    ["Target share", (u) => u.tgtShare, pct],
+    ["Red-zone touches/g", (u) => (n0(u.agg.rush_rz_att) + n0(u.agg.rec_rz_tgt)) / u.g, per],
+  ],
+  REC: [
+    ["Targets/g", (u) => u.agg.rec_tgt / u.g, per],
+    ["Target share", (u) => u.tgtShare, pct],
+    ["Air yd/g", (u) => u.agg.rec_air_yd / u.g, per],
+    ["Red-zone tgt/g", (u) => u.agg.rec_rz_tgt / u.g, per],
+  ],
+  IDP: [
+    ["Tackles/g", (u) => (n0(u.agg.idp_tkl_solo) + n0(u.agg.idp_tkl_ast)) / u.g, per],
+    ["Tackles per 60 snaps", (u) => (u.snaps ? ((n0(u.agg.idp_tkl_solo) + n0(u.agg.idp_tkl_ast)) / u.snaps) * 60 : null), per],
+    ["Sacks + TFL/g", (u) => (n0(u.agg.idp_sack) + n0(u.agg.idp_tkl_loss)) / u.g, per],
+    ["QB hits/g", (u) => u.agg.idp_qb_hit / u.g, per],
+    ["PD + INT/g", (u) => (n0(u.agg.idp_pass_def) + n0(u.agg.idp_int)) / u.g, per],
+  ],
+};
+
+let usageShowAll = false;
+
+function trendCell(t) {
+  if (t == null) return `<span class="muted">—</span>`;
+  const v = Math.round(t * 100);
+  const cls = v >= 10 ? "up" : v <= -10 ? "down" : "";
+  return `<span class="trend ${cls}">${v > 0 ? "+" : ""}${v}%${cls === "up" ? " ▲" : cls === "down" ? " ▼" : ""}</span>`;
+}
+
+function renderUsage() {
+  const card = $("usageCard");
+  card.hidden = false;
+  if (!usageCache) {
+    $("usageTable").innerHTML = `<p class="empty">${extrasError
+      ? "Couldn't load detailed stats: " + escapeHTML(extrasError)
+      : "Usage appears after week 1."}</p>`;
+    $("useAll").hidden = true;
+    return;
+  }
+  const group = $("usePos").value;
+  const kind = kindOf(POS_GROUPS[group][0]);
+  const win = $("useWin").value;
+  const sortBy = $("useSort").value;
+  const ownerFilter = $("useOwner").value;
+  const ownerOf = {};
+  for (const t of currentTeams) for (const p of t.roster) ownerOf[p.id] = t;
+
+  let rows = Object.entries(usageCache)
+    .filter(([id]) => POS_GROUPS[group].includes(players[id].pos))
+    .map(([id, u]) => ({ id, u: win === "last3" ? u.recent : u.season, trend: u.trend, ptsTrend: u.ptsTrend, owner: ownerOf[id] || null }))
+    .filter((r) => r.u.g >= (win === "last3" ? 1 : 2))
+    .filter((r) => ownerFilter === "all" ||
+      (ownerFilter === "mine" && r.owner?.isMine) ||
+      (ownerFilter === "others" && r.owner && !r.owner.isMine) ||
+      (ownerFilter === "available" && !r.owner));
+
+  const key = { opp: (r) => r.u.opp, trend: (r) => r.trend ?? -9, snap: (r) => r.u.snapPct ?? -1, ppg: (r) => r.u.ppg }[sortBy];
+  rows.sort((a, b) => key(b) - key(a));
+
+  const LIMIT = 40;
+  $("useAll").hidden = rows.length <= LIMIT;
+  $("useAll").textContent = usageShowAll ? "Show top 40" : `Show all ${rows.length}`;
+  const shown = usageShowAll ? rows : rows.slice(0, LIMIT);
+  if (!rows.length) {
+    $("usageTable").innerHTML = `<p class="empty">No players match these filters.</p>`;
+    return;
+  }
+  const cols = USAGE_COLS[kind];
+  $("usageTable").innerHTML = `
+    <table>
+      <thead><tr>
+        <th>#</th><th>Player</th><th>Fantasy team</th><th class="num">Games</th><th class="num">Snap %</th>
+        ${cols.map(([label]) => `<th class="num">${label}</th>`).join("")}
+        <th class="num">Pts/game</th><th class="num" title="Workload over the last 3 weeks vs earlier weeks">Usage trend</th>
+      </tr></thead>
+      <tbody>
+        ${shown.map((r, i) => {
+          const p = players[r.id];
+          const buy = r.trend != null && r.trend >= 0.15 && (r.ptsTrend == null || r.ptsTrend < r.trend - 0.1);
+          return `<tr class="${r.owner?.isMine ? "mine" : ""}">
+            <td>${i + 1}</td>
+            <td><span class="pos ${IDP_POSITIONS.includes(p.pos) ? "IDP" : ""}">${escapeHTML(p.pos)}</span>
+              ${nameBtn(r.id)}<small>${escapeHTML(p.team)}</small>${buy ? `<span class="badge">Usage up</span>` : ""}</td>
+            <td>${r.owner ? escapeHTML(r.owner.teamName) : "<small>Not rostered</small>"}</td>
+            <td class="num">${r.u.g}</td>
+            <td class="num">${pct(r.u.snapPct)}</td>
+            ${cols.map(([, fn, fmt]) => `<td class="num">${fmt(fn(r.u))}</td>`).join("")}
+            <td class="num">${r.u.ppg.toFixed(1)}</td>
+            <td class="num">${trendCell(r.trend)}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>`;
+}
+
+/* =====================================================================
+   Lineup optimizer
+   Projected points (your league's scoring) for every player, then the
+   best legal lineup. Players whose game has started are locked in place,
+   the same as Sleeper. Byes and players ruled Out count as 0.
+   ===================================================================== */
+
+let optTeam = null;
+const slotRank = (s) => (FLEX_ORDER.includes(s) ? 1 + FLEX_ORDER.indexOf(s) : 0);
+
+function optimizeLineup(r, week) {
+  const slots = (leagueData.league.roster_positions || []).filter((s) => s !== "BN");
+  const starters = r.starters || [];
+  const taxi = new Set(r.taxi || []), ir = new Set(r.reserve || []);
+  const pool = (r.players || []).filter((id) => !taxi.has(id) && !ir.has(id));
+  const info = (id) => {
+    const p = players[id] || {};
+    const state = gameState(p.team, week);
+    const zero = state === "bye" || isOut(id);
+    return { id, pos: p.pos, proj: zero ? 0 : projOf(id, week) ?? 0, state, locked: state === "live" || state === "done" };
+  };
+
+  const current = slots.map((_, i) => (starters[i] && starters[i] !== "0" ? info(starters[i]) : null));
+  const best = Array(slots.length).fill(null);
+  const used = new Set();
+
+  // Started games are locked: those starters stay, and those bench players can't come in.
+  current.forEach((x, i) => { if (x?.locked) { best[i] = x; used.add(x.id); } });
+  for (const id of pool) if (!starters.includes(id) && info(id).locked) used.add(id);
+
+  // Fill the rest: strict slots first, then flex slots from most to least restrictive.
+  const candidates = pool.filter((id) => !used.has(id)).map(info).sort((a, b) => b.proj - a.proj);
+  const order = slots.map((_, i) => i).sort((a, b) => slotRank(slots[a]) - slotRank(slots[b]));
+  for (const i of order) {
+    if (best[i]) continue;
+    const ok = SLOT_ELIGIBLE[slots[i]] || [];
+    const c = candidates.find((x) => !used.has(x.id) && ok.includes(x.pos));
+    if (c) { best[i] = c; used.add(c.id); }
+  }
+  return { slots, current, best };
+}
+
+function renderOptimizer() {
+  const card = $("optCard");
+  card.hidden = false;
+  const league = leagueData.league;
+  const week = currentWeek(league);
+  const me = currentTeams.find((t) => t.isMine);
+  if (!currentTeams.some((t) => t.rosterId === optTeam)) optTeam = me?.rosterId ?? currentTeams[0]?.rosterId;
+  $("optTeam").innerHTML = currentTeams
+    .map((t) => `<option value="${t.rosterId}">${escapeHTML(t.teamName)}${t.isMine ? " (you)" : ""}</option>`).join("");
+  $("optTeam").value = optTeam;
+
+  if (!week) {
+    $("optNote").textContent = "";
+    $("optBody").innerHTML = `<p class="empty">The optimizer works during the season.</p>`;
+    return;
+  }
+  if (!projCache[week]) {
+    $("optNote").textContent = "";
+    $("optBody").innerHTML = `<p class="empty">${extrasError ? "Projections didn't load: " + escapeHTML(extrasError) : "Loading projections…"}</p>`;
+    return;
+  }
+  $("optNote").textContent = `Week ${week} projections from Sleeper, scored with your league's rules. ` +
+    `Players whose games have started are locked. Byes and players ruled out count as 0.`;
+
+  const r = leagueData.rosters.find((x) => x.roster_id === optTeam);
+  const { slots, current, best } = optimizeLineup(r, week);
+  const total = (list) => list.reduce((s, x) => s + (x?.proj || 0), 0);
+  const gain = total(best) - total(current);
+  const curIds = new Set(current.filter(Boolean).map((x) => x.id));
+  const bestIds = new Set(best.filter(Boolean).map((x) => x.id));
+  const ins = best.filter((x) => x && !curIds.has(x.id));
+  const outs = current.filter((x) => x && !bestIds.has(x.id));
+
+  const warnings = [];
+  current.forEach((x, i) => {
+    const slot = SLOT_LABEL[slots[i]] || slots[i];
+    if (!x) return warnings.push(`Your ${slot} slot is empty.`);
+    const name = escapeHTML(players[x.id]?.name);
+    if (x.state === "bye") warnings.push(`${name} (${slot}) is on bye.`);
+    else if (players[x.id]?.inj && !x.locked) warnings.push(`${name} (${slot}) is listed as ${escapeHTML(players[x.id].inj)}.`);
+  });
+
+  const row = (x) => `<li><span>${nameBtn(x.id)} <small class="muted">${escapeHTML(x.pos)}</small> ${injChip(x.id)}</span><b>${x.proj.toFixed(1)}</b></li>`;
+  const cell = (x) => x
+    ? `${nameBtn(x.id)} <small class="muted">${escapeHTML(x.pos)} · ${escapeHTML(players[x.id]?.team || "")}</small> ${gameChip(x.state, players[x.id]?.team, week)}${x.locked ? "" : injChip(x.id)}`
+    : `<span class="muted">Empty</span>`;
+
+  $("optBody").innerHTML = `
+    <div class="opt-head">${gain > 0.5
+      ? `Best lineup projects ${total(best).toFixed(1)}, which is ${gain.toFixed(1)} more than your current ${total(current).toFixed(1)}.`
+      : `This lineup is already the best by projections (${total(current).toFixed(1)}).`}</div>
+    ${warnings.map((w) => `<div class="warn">⚠ ${w}</div>`).join("")}
+    ${ins.length ? `<div class="opt-cols">
+      <div class="opt-box"><h3>Start</h3><ul>${ins.map(row).join("")}</ul></div>
+      <div class="opt-box"><h3>Bench</h3><ul>${outs.map(row).join("")}</ul></div>
+    </div>` : ""}
+    <table>
+      <thead><tr><th>Slot</th><th>Current</th><th class="num">Proj</th><th>Best</th><th class="num">Proj</th></tr></thead>
+      <tbody>${slots.map((s, i) => `
+        <tr class="${current[i]?.id !== best[i]?.id ? "changed" : ""}">
+          <td><span class="slot">${SLOT_LABEL[s] || s}</span></td>
+          <td>${cell(current[i])}</td><td class="num">${current[i] ? current[i].proj.toFixed(1) : "—"}</td>
+          <td>${cell(best[i])}</td><td class="num">${best[i] ? best[i].proj.toFixed(1) : "—"}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>`;
+}
+
+/* =====================================================================
+   Player detail panel
+   ===================================================================== */
+
+const fmtN = (v) => (v == null ? "—" : Number.isInteger(v) ? v : v.toFixed(1));
+const DETAIL_COLS = {
+  QB: [["C/A", (s) => `${n0(s.pass_cmp)}/${n0(s.pass_att)}`], ["Pass yd", (s) => n0(s.pass_yd)], ["TD", (s) => n0(s.pass_td)],
+    ["INT", (s) => n0(s.pass_int)], ["Rush", (s) => `${n0(s.rush_att)}-${n0(s.rush_yd)}`], ["Rush TD", (s) => n0(s.rush_td)]],
+  RB: [["Car", (s) => n0(s.rush_att)], ["Rush yd", (s) => n0(s.rush_yd)], ["Rush TD", (s) => n0(s.rush_td)], ["Tgt", (s) => n0(s.rec_tgt)],
+    ["Rec", (s) => n0(s.rec)], ["Rec yd", (s) => n0(s.rec_yd)], ["Rec TD", (s) => n0(s.rec_td)], ["RZ", (s) => n0(s.rush_rz_att) + n0(s.rec_rz_tgt)]],
+  REC: [["Tgt", (s) => n0(s.rec_tgt)], ["Rec", (s) => n0(s.rec)], ["Yd", (s) => n0(s.rec_yd)], ["TD", (s) => n0(s.rec_td)],
+    ["Air yd", (s) => n0(s.rec_air_yd)], ["YAC", (s) => n0(s.rec_yac)], ["RZ tgt", (s) => n0(s.rec_rz_tgt)]],
+  K: [["FG", (s) => `${n0(s.fgm)}/${n0(s.fga)}`], ["Long", (s) => n0(s.fgm_lng)], ["XP", (s) => `${n0(s.xpm)}/${n0(s.xpa)}`]],
+  IDP: [["Solo", (s) => n0(s.idp_tkl_solo)], ["Ast", (s) => n0(s.idp_tkl_ast)], ["TFL", (s) => n0(s.idp_tkl_loss)], ["Sack", (s) => n0(s.idp_sack)],
+    ["QB hit", (s) => n0(s.idp_qb_hit)], ["PD", (s) => n0(s.idp_pass_def)], ["INT", (s) => n0(s.idp_int)], ["FF", (s) => n0(s.idp_ff)]],
+};
+
+function barChart(vals, labels, color) {
+  const W = 420, H = 150, m = { t: 16, r: 4, b: 18, l: 4 };
+  const max = Math.max(1, ...vals.filter((v) => v != null));
+  const bw = (W - m.l - m.r) / Math.max(vals.length, 1);
+  const ih = H - m.t - m.b;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  vals.forEach((v, i) => {
+    const cx = m.l + i * bw + bw / 2;
+    if (v == null) {
+      svg += `<text x="${cx}" y="${H - m.b - 4}" text-anchor="middle">–</text>`;
+    } else {
+      const h = (Math.max(v, 0) / max) * ih;
+      svg += `<rect x="${cx - bw * 0.34}" y="${H - m.b - h}" width="${bw * 0.68}" height="${Math.max(h, 1)}" rx="2" fill="var(${color})" />`;
+      svg += `<text x="${cx}" y="${H - m.b - h - 4}" text-anchor="middle">${+v.toFixed(1)}</text>`;
+    }
+    svg += `<text x="${cx}" y="${H - 4}" text-anchor="middle">${labels[i]}</text>`;
+  });
+  return svg + `</svg>`;
+}
+
+function openPlayer(id) {
+  const p = players[id] || { name: id, pos: "?", team: "" };
+  const kind = kindOf(p.pos);
+  const idp = kind === "IDP";
+  const owner = currentTeams.find((t) => t.roster.some((x) => x.id === id));
+  const weeks = Object.keys(weeklyStats).map(Number).sort((a, b) => a - b);
+  const liveWeek = h2h.live && h2h.stats && !weeks.includes(h2h.week) ? h2h.week : null;
+  if (liveWeek) weeks.push(liveWeek);
+  const statFor = (w) => (w === liveWeek ? h2h.stats[id] : weeklyStats[w]?.[id]);
+
+  // Weeks from the stats feed; fall back to league points if detailed stats didn't load.
+  const fallback = !weeks.length && weeklyPoints?.byPlayer[id];
+  const labels = fallback ? fallback.map((_, i) => "W" + (i + 1)) : weeks.map((w) => "W" + w + (w === liveWeek ? "*" : ""));
+  const ptsArr = fallback ? fallback : weeks.map((w) => statFor(w)?.pts ?? null);
+  const oppArr = weeks.map((w) => { const s = statFor(w); return s && OPP[kind] ? OPP[kind](s) : null; });
+
+  const played = ptsArr.filter((v) => v != null);
+  const u = usageCache?.[id];
+  const proj = projOf(id);
+  const v = valueSets.balanced?.[id]?.value;
+  const kpis = [
+    ["Age", fmtAge(exactAge(p))],
+    ["Games", played.length],
+    ["Pts/game", played.length ? (played.reduce((a, b) => a + b, 0) / played.length).toFixed(1) : "—"],
+    ["Last 3 avg", u ? u.recent.ppg.toFixed(1) : "—"],
+    ["Snap %", u ? pct(u.season.snapPct) : "—"],
+    [`Week ${currentWeek(leagueData.league)} proj`, proj != null ? proj.toFixed(1) : "—"],
+    ["Usage trend", u ? trendCell(u.trend) : "—"],
+    ["Trade value", v != null ? fmtVal(v) : "—"],
+  ];
+
+  const cols = DETAIL_COLS[kind] || [];
+  const logRows = weeks.slice().reverse().map((w) => {
+    const s = statFor(w);
+    const g = gameOf(p.team, w);
+    const opp = g ? `${g.home ? "vs" : "@"} ${g.opp}` : schedule ? "Bye" : "";
+    if (!s) return `<tr><td>${w}${w === liveWeek ? "*" : ""}</td><td>${escapeHTML(opp)}</td><td class="num muted" colspan="${cols.length + 2}">${!g ? "—" : w === liveWeek && gameState(p.team, w) !== "done" ? "Not played yet" : "Did not play"}</td></tr>`;
+    const snp = idp ? [s.def_snp, s.tm_def_snp] : [s.off_snp, s.tm_off_snp];
+    return `<tr><td>${w}${w === liveWeek ? "*" : ""}</td><td>${escapeHTML(opp)}</td>
+      <td class="num">${snp[1] ? pct(n0(snp[0]) / snp[1]) : "—"}</td>
+      ${cols.map(([, fn]) => `<td class="num">${fmtN(fn(s))}</td>`).join("")}
+      <td class="num"><b>${s.pts.toFixed(1)}</b></td></tr>`;
+  }).join("");
+
+  $("dlgTitle").innerHTML = `${escapeHTML(p.name)} ${injChip(id)}`;
+  $("dlgMeta").textContent = `${p.pos} · ${p.team}${p.exp != null ? ` · ${p.exp ? "year " + (p.exp + 1) : "rookie"}` : ""} · ${owner ? owner.teamName : "Not rostered"}`;
+  $("dlgBody").innerHTML = `
+    <div class="kpis">${kpis.map(([k, val]) => `<div class="kpi"><span>${k}</span><b>${val}</b></div>`).join("")}</div>
+    <div class="charts">
+      <div><h3>Fantasy points by week</h3>${barChart(ptsArr, labels, "--dot-you")}</div>
+      ${OPP[kind] && !fallback ? `<div><h3>${OPP_LABEL[kind]} by week</h3>${barChart(oppArr, labels, "--young")}</div>` : ""}
+    </div>
+    ${weeks.length && cols.length ? `<div class="log"><table>
+      <thead><tr><th>Wk</th><th>Opp</th><th class="num">Snap %</th>${cols.map(([l]) => `<th class="num">${l}</th>`).join("")}<th class="num">Pts</th></tr></thead>
+      <tbody>${logRows}</tbody></table></div>` : `<p class="empty">${extrasError ? "Detailed stats didn't load." : "No game log yet."}</p>`}
+    ${liveWeek ? `<p class="rank-note">* Week ${liveWeek} is still in progress.</p>` : ""}`;
+  const dlg = $("playerDlg");
+  if (!dlg.open) dlg.showModal();
+  dlg.scrollTop = 0;
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("button.plink");
+  if (btn) openPlayer(btn.dataset.pid);
+});
+$("dlgClose").addEventListener("click", () => $("playerDlg").close());
+$("playerDlg").addEventListener("click", (e) => { if (e.target === $("playerDlg")) $("playerDlg").close(); });
+
+for (const id of ["usePos", "useWin", "useSort", "useOwner"]) {
+  $(id).addEventListener("change", () => { usageShowAll = false; renderUsage(); });
+}
+$("useAll").addEventListener("click", () => { usageShowAll = !usageShowAll; renderUsage(); });
+$("optTeam").addEventListener("change", (e) => { optTeam = +e.target.value; renderOptimizer(); });
+$("optRefresh").addEventListener("click", async () => {
+  const btn = $("optRefresh");
+  btn.disabled = true;
+  try {
+    const league = leagueData.league;
+    const [rosters] = await Promise.all([
+      getJSON(`/league/${league.league_id}/rosters`),
+      loadSchedule(league.season).catch(() => null),
+    ]);
+    leagueData.rosters = rosters;
+    render();
+    refreshValues();
+    renderOptimizer();
+  } catch (err) {
+    setStatus(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 /* ---------- Wire up the controls ---------- */
+$("valueModel").addEventListener("change", refreshValues);
 $("strategy").addEventListener("change", () => {
   strategyChosenByUser = true;
   $("strategyNote").textContent = "";
